@@ -59,7 +59,6 @@ def format_date_vn(dt):
 def parse_kblt_excel(file):
     try:
         df = pd.read_excel(file, header=9)
-        # Làm sạch cột Hạn Visa: Nếu không phải ngày tháng hợp lệ thì xóa trắng (bỏ số CCCD/vn)
         df['Thời hạn được phép tạm trú tại Việt Nam'] = df['Thời hạn được phép tạm trú tại Việt Nam'].apply(
             lambda x: x if extract_visa_date(x) is not None else None
         )
@@ -173,11 +172,10 @@ def process_data(check_date, files_dict):
                 break
         if not base_src: continue
 
-        # Sửa lỗi chính tả Key tại đây
         pRoom, pName, pPass, pIn, pOut, pVisa = data['Room'], base_src['Name'], base_src['Key'], base_src['In'], base_src['Out'], base_src['Visa']
         
-        out_s = srcs['kblt_sang']['Out'] if in_ks else (srcs['gihf_sang']['Out'] if in_gs else None)
-        out_c = srcs['kblt_chieu']['Out'] if in_kc else (srcs['gihf_chieu']['Out'] if in_gc else None)
+        out_s = srcs['kblt_sang']['Out'] if in_ks and srcs['kblt_sang'].get('Out') else (srcs['gihf_sang']['Out'] if in_gs and srcs['gihf_sang'].get('Out') else None)
+        out_c = srcs['kblt_chieu']['Out'] if in_kc and srcs['kblt_chieu'].get('Out') else (srcs['gihf_chieu']['Out'] if in_gc and srcs['gihf_chieu'].get('Out') else None)
         
         is_due, is_stay, note, err, loai_loi = False, False, "", "", ""
 
@@ -233,12 +231,12 @@ def process_data(check_date, files_dict):
             base_dict, comp_dict, n_base, n_comp = srcs['kblt_sang'], srcs['pol_sang'], "Web", "Police"
 
         if base_dict and comp_dict:
-            if base_dict['Room'] != comp_dict['Room']:
-                err += f"Lệch Phòng ({n_base}: {base_dict['Room']} vs {n_comp}: {comp_dict['Room']}); "
-            if base_dict['Out'] != comp_dict['Out']:
-                err += f"Lệch Ngày Out ({n_base}: {format_date_vn(base_dict['Out'])} vs {n_comp}: {format_date_vn(comp_dict['Out'])}); "
-            if not is_same_guest(base_dict['Name'], comp_dict['Name']):
-                err += f"Lệch Tên ({n_base}: {base_dict['Name']} vs {n_comp}: {comp_dict['Name']}); "
+            if base_dict.get('Room') != comp_dict.get('Room'):
+                err += f"Lệch Phòng ({n_base}: {base_dict.get('Room')} vs {n_comp}: {comp_dict.get('Room')}); "
+            if base_dict.get('Out') != comp_dict.get('Out'):
+                err += f"Lệch Ngày Out ({n_base}: {format_date_vn(base_dict.get('Out'))} vs {n_comp}: {format_date_vn(comp_dict.get('Out'))}); "
+            if not is_same_guest(base_dict.get('Name', ''), comp_dict.get('Name', '')):
+                err += f"Lệch Tên ({n_base}: {base_dict.get('Name')} vs {n_comp}: {comp_dict.get('Name')}); "
 
         if 'NOPASS_' in pPass: 
             loai_loi, err = "Thiếu Passport", "Chưa nhập số Passport; "
@@ -262,7 +260,7 @@ def process_data(check_date, files_dict):
             'Ngày In': format_date_vn(pIn), 'Ngày Out': format_date_vn(pOut),
             'Hạn Visa': format_date_vn(visa_dt) if visa_dt else "",
             'Trạng Thái/Ghi Chú': note.strip(), 
-            'Hồ Sơ': "" # Cột để trống chờ VBA ở dưới máy tính quét
+            'Hồ Sơ': ""
         }
 
         if loai_loi:
