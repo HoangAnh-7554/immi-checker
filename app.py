@@ -480,7 +480,6 @@ def process_data(check_date, files_dict):
             elif not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: 
                 if pIn and 0 <= (check_dt - pIn).days <= 1: loai_loi = "Thiếu Police (Ca trước)"
 
-        # [BẢN VÁ LOGIC CỐT LÕI - GIA HẠN ĐƯỢC CẤP "VISA KÉP"]
         if has_ca_hien_tai:
             if pIn == check_dt or in_pc:
                 if (in_kc and out_c == check_dt) or (not in_kc and not in_gc and out_s == check_dt): 
@@ -493,7 +492,6 @@ def process_data(check_date, files_dict):
                     if not in_kc and not in_gc: 
                         is_due, is_stay, note = True, False, "Đã Checked-out hoàn toàn"
                     elif out_c and out_c > check_dt: 
-                        # ĐÂY LÀ ĐIỂM SÁNG GIÁ: Khách gia hạn từ hôm nay sẽ hiển thị trên cả 2 Tab (Due Out & Stayover)
                         is_due, is_stay, note = True, True, f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
                     else: 
                         is_due, is_stay, note = True, False, "Chưa Checked-out (KBLT)"
@@ -577,6 +575,20 @@ def process_data(check_date, files_dict):
 
         if note.startswith(" | "): note = note[3:]
 
+        # ==========================================
+        # [BẢN VÁ LỖI CỐT LÕI - DỌN DẸP BÁO CÁO RÁC & CẤP VISA KÉP]
+        # ==========================================
+        
+        # 1. Nếu khách "Đã Checked-out hoàn toàn", dọn sạch mọi lỗi (Không đưa vào Sheet Lưu Ý nữa)
+        if "Đã Checked-out hoàn toàn" in note:
+            loai_loi = ""
+            err = ""
+            
+        # 2. Nếu khách có biến động "Gia hạn (Extend)" hoặc "Cắt ngày (Shorten)", 
+        # bắt buộc ép hiển thị ở Sheet Due Out để Lễ tân đối soát
+        if "[Extend]" in note or "[Shorten]" in note:
+            is_due = True
+
         row_data = {
             'Phân Loại': loai_loi if loai_loi else "",
             'Phòng': final_room_display, 
@@ -592,7 +604,6 @@ def process_data(check_date, files_dict):
             'Chi Tiết': err, 'Hồ Sơ': ""
         }
 
-        # LUỒNG XUẤT DỮ LIỆU ĐA CHIỀU KHÔNG CHẶN NHAU
         if loai_loi: rep_loi.append(row_data)
         if is_due: rep_due.append(row_data)
         if is_stay: rep_stay.append(row_data)
