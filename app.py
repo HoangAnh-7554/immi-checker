@@ -107,13 +107,15 @@ VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 # ==========================================
 
 def get_src_name(s_key):
+    """Đổi tên nhãn nguồn dữ liệu cho dễ nhìn và phân biệt rõ ràng"""
     s_lower = s_key.lower()
     if 'kblt' in s_lower: return 'KBLT'
-    if 'gihf' in s_lower: return 'Opera'
+    if 'gihf' in s_lower: return 'GIHF'
     if 'pol' in s_lower: return 'Police'
     return s_key
 
 def get_srcs_str(s_keys):
+    """Gộp chung các nguồn trùng nhau (VD: KBLT+GIHF)"""
     return '+'.join(dict.fromkeys(get_src_name(s) for s in s_keys))
 
 def safe_str(val):
@@ -188,7 +190,6 @@ def is_dob_match(d1, d2):
     return False
 
 def parse_date(val, is_dob=False):
-    # [FIX CỐT LÕI]: Triệt tiêu giờ/phút/giây từ tất cả các file để so sánh chính xác mốc 00:00:00
     if pd.isna(val) or val is None: return None
     val_str = str(val).strip()
     if val_str.lower() in ["nan", "nat", "none", ""]: return None
@@ -286,7 +287,6 @@ def process_data(check_date, files_dict):
                 din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
                 visa = r.get('Thời hạn được phép tạm trú tại Việt Nam', None)
                 
-                # Mọi dữ liệu đi vào mảng phải trải qua dịch ngày tháng
                 all_guests.append({
                     'Key': passp, 'Room': room, 'Name': name, 'DOB': r.get('Ngày sinh'), 
                     'Gender': r.get('Giới tính'), 'Nat': r.get('Quốc tịch'),
@@ -324,7 +324,6 @@ def process_data(check_date, files_dict):
 
         is_vietnamese = any(get_iso3(srcs[s]['Nat']) == 'VNM' for s in srcs if srcs[s]['Nat'])
 
-        # Xác định mốc Ngày Out theo Ca Trước và Ca Hiện tại
         outs_truoc = [srcs[s]['Out'] for s in ['kblt_sang', 'gihf_sang', 'pol_sang'] if s in srcs and pd.notna(srcs[s].get('Out')) and not isinstance(srcs[s]['Out'], str)]
         out_s = max(outs_truoc) if outs_truoc else None
 
@@ -453,7 +452,6 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(visa_srcs[d])}: {format_date_vn(d)}" for d in visas])
             err += f"Lệch Hạn Visa ({diff}); "
 
-        # [BẢN VÁ LOGIC CỐT LÕI] - Khôi phục trạng thái Extend, Shorten, Checked-Out theo Ca Trước vs Ca Hiện Tại
         is_due, is_stay, note, loai_loi = False, False, "", ""
         if has_ca_hien_tai:
             if pIn == check_dt or in_pc:
@@ -528,15 +526,16 @@ def process_data(check_date, files_dict):
         else:
             if has_ca_hien_tai:
                 if 'gihf_chieu' in uploaded_files and 'gihf_chieu' not in srcs:
-                    if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu Opera (Hiện tại)"
-                if 'kblt_chieu' in uploaded_files and 'kblt_chieu' not in srcs:
-                    if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu KBLT (Hiện tại)"
-                if not is_vietnamese and 'pol_chieu' in uploaded_files and 'pol_chieu' not in srcs:
-                    if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu Police (Hiện tại)"
+                    if chot_out_date and chot_out_date >= check_dt: loai_loi = "Thiếu GIHF (Hiện tại)"
+                elif 'kblt_chieu' in uploaded_files and 'kblt_chieu' not in srcs:
+                    if chot_out_date and chot_out_date >= check_dt: loai_loi = "Thiếu KBLT (Hiện tại)"
+                elif not is_vietnamese and 'pol_chieu' in uploaded_files and 'pol_chieu' not in srcs:
+                    if pIn == check_dt: loai_loi = "Thiếu Police (Hiện tại)"
             elif has_ca_truoc:
-                if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: loai_loi = "Thiếu Opera (Ca trước)"
-                if 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: loai_loi = "Thiếu KBLT (Ca trước)"
-                if not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: loai_loi = "Thiếu Police (Ca trước)"
+                if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: loai_loi = "Thiếu GIHF (Ca trước)"
+                elif 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: loai_loi = "Thiếu KBLT (Ca trước)"
+                elif not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: 
+                    if pIn and 0 <= (check_dt - pIn).days <= 1: loai_loi = "Thiếu Police (Ca trước)"
 
         if not is_vietnamese:
             opera_missing = False
@@ -553,9 +552,9 @@ def process_data(check_date, files_dict):
             if opera_missing:
                 loai_loi = "Lưu ý" if not loai_loi else loai_loi
                 if opera_garbage:
-                    err += f"Chưa nhập Visa trên Opera (Đang chứa dữ liệu rác: {', '.join(opera_garbage)}); "
+                    err += f"Chưa nhập Visa trên GIHF (Đang chứa dữ liệu rác: {', '.join(opera_garbage)}); "
                 else:
-                    err += "Chưa nhập Visa trên Opera; "
+                    err += "Chưa nhập Visa trên GIHF; "
 
         if note.startswith(" | "): note = note[3:]
 
