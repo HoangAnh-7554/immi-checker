@@ -40,14 +40,14 @@ def get_iso3(val):
     val = standardize_text(val)
     if not val: return ""
     
-    # SIÊU TỪ ĐIỂN QUỐC TỊCH (TÍCH HỢP TỪ KBLT CÔNG AN VÀ TS24)
+    # BỘ TỪ ĐIỂN CHUẨN KBLT CÔNG AN (ĐÃ KHÓA NGOẠI LỆ TÊN DÀI)
     vn_map = {
-        'VIỆT NAM': 'VNM', 'VN': 'VNM', 'AFGHANISTAN': 'AFG', 'AF': 'AFG', 'AILEN (IRELAND)': 'IRL', 'IE': 'IRL', 
-        'ALGERIA': 'DZA', 'DZ': 'DZA', 'AMER.VIRGIN IS.': 'VIR', 'VI': 'VIR', 'AN BA NI': 'ALB', 'AL': 'ALB', 
-        'ANDORRAN': 'AND', 'AD': 'AND', 'ANGOLA': 'AGO', 'AO': 'AGO', 'ANGUILLA': 'AIA', 'AI': 'AIA', 'ANH': 'GBR', 
-        'GB': 'GBR', 'ANTARCTICA': 'ATA', 'AQ': 'ATA', 'ANTIGUA/BARBUDA': 'ATG', 'AG': 'ATG', 'ARGENTINA': 'ARG', 
-        'AR': 'ARG', 'ARMENIA': 'ARM', 'AM': 'ARM', 'ARUBA': 'ABW', 'AW': 'ABW', 'AZERBAIJAN': 'AZE', 'AZ': 'AZE', 
-        'ÁO': 'AUT', 'AT': 'AUT', 'ẤN ĐỘ': 'IND', 'IN': 'IND', 'BA LAN': 'POL', 'PL': 'POL', 'BAHAMAS': 'BHS', 
+        'LIÊN BANG NGA': 'RUS', 'NAM PHI': 'ZAF', 'VIỆT NAM': 'VNM', 'VN': 'VNM', 'AFGHANISTAN': 'AFG', 'AF': 'AFG', 
+        'AILEN (IRELAND)': 'IRL', 'IE': 'IRL', 'ALGERIA': 'DZA', 'DZ': 'DZA', 'AMER.VIRGIN IS.': 'VIR', 'VI': 'VIR', 
+        'AN BA NI': 'ALB', 'AL': 'ALB', 'ANDORRAN': 'AND', 'AD': 'AND', 'ANGOLA': 'AGO', 'AO': 'AGO', 'ANGUILLA': 'AIA', 
+        'AI': 'AIA', 'ANH': 'GBR', 'GB': 'GBR', 'ANTARCTICA': 'ATA', 'AQ': 'ATA', 'ANTIGUA/BARBUDA': 'ATG', 'AG': 'ATG', 
+        'ARGENTINA': 'ARG', 'AR': 'ARG', 'ARMENIA': 'ARM', 'AM': 'ARM', 'ARUBA': 'ABW', 'AW': 'ABW', 'AZERBAIJAN': 'AZE', 
+        'AZ': 'AZE', 'ÁO': 'AUT', 'AT': 'AUT', 'ẤN ĐỘ': 'IND', 'IN': 'IND', 'BA LAN': 'POL', 'PL': 'POL', 'BAHAMAS': 'BHS', 
         'BS': 'BHS', 'BAHRAIN': 'BHR', 'BH': 'BHR', 'BAKER ISLAND': 'FQ', 'FQ': 'FQ', 'BANGLADESH': 'BGD', 'BD': 'BGD', 
         'BARBADOS': 'BRB', 'BB': 'BRB', 'BELARUS': 'BLR', 'BY': 'BLR', 'BELIZE': 'BLZ', 'BZ': 'BLZ', 'BENIN': 'BEN', 
         'BJ': 'BEN', 'BERMUDA': 'BMU', 'BM': 'BMU', 'BHUTAN': 'BTN', 'BT': 'BTN', 'BLUE': 'BLM', 'BL': 'BLM', 
@@ -124,25 +124,33 @@ def get_iso3(val):
         'TURKMENISTAN': 'TKM', 'TM': 'TKM', 'TURKSH CAICOSIN': 'TCA', 'TC': 'TCA', 'TUVALU': 'TUV', 'TV': 'TUV', 
         'TÂY BAN NHA': 'ESP', 'ES': 'ESP', 'UGANDA': 'UGA', 'UG': 'UGA', 'UKRAINE': 'UKR', 'UA': 'UKR', 
         'UNITED ARAB EMI': 'ARE', 'UE': 'UE', 'UNITED NATIONS': 'UN', 'UN': 'UN', 'UNKNOWN COUNTRY': 'UC', 'UC': 'UC', 
-        'URUGUAY': 'URY', 'UY': 'URY', 'UTD.ARAB EMIR.': 'AE', 'AE': 'ARE', 'UZBEKISTAN': 'UZB', 'UZ': 'UZB', 'ÚC': 'AUS', 
-        'AU': 'AUS', 'VANUATU': 'VUT', 'VU': 'VUT', 'VATICAN CITY': 'VAT', 'VA': 'VAT', 'VENEZUELA': 'VEN', 'VE': 'VEN', 
-        'WALLIS,FUTUNA': 'WLF', 'WF': 'WLF', 'WEST SAHARA': 'ESH', 'EH': 'ESH', 'YEMEN': 'YEM', 'YE': 'YEM', 
+        'URUGUAY': 'URY', 'UY': 'URY', 'UTD.ARAB EMIR.': 'ARE', 'AE': 'ARE', 'UZBEKISTAN': 'UZB', 'UZ': 'UZB', 
+        'ÚC': 'AUS', 'AU': 'AUS', 'VANUATU': 'VUT', 'VU': 'VUT', 'VATICAN CITY': 'VAT', 'VA': 'VAT', 'VENEZUELA': 'VEN', 
+        'VE': 'VEN', 'WALLIS,FUTUNA': 'WLF', 'WF': 'WLF', 'WEST SAHARA': 'ESH', 'EH': 'ESH', 'YEMEN': 'YEM', 'YE': 'YEM', 
         'ZAMBIA': 'ZMB', 'ZM': 'ZMB', 'ZIMBABWE': 'ZWE', 'ZW': 'ZWE', 'KHÁC': 'ZZ', 'ZZ': 'ZZ', 
-
-        # CÁC BIẾN THỂ PHIÊN ÂM VÀ TỪ VIẾT TẮT THÔNG DỤNG BỔ SUNG
-        'TRUNG QUỐC (ĐÀI LOAN)': 'TWN', 'CH HÀN': 'KOR', 'HÀN QUỐC': 'KOR', 'MỸ': 'USA', 
-        'VƯƠNG QUỐC ANH VÀ BẮC AI LEN': 'GBR', 'VƯƠNG QUỐC ANH': 'GBR', 'UK': 'GBR', 'Ô-XTRÂY-LI-A': 'AUS', 'Ô-XTRÂY': 'AUS',
-        'MA-LAI-XI-A': 'MYS', 'MA-LAI': 'MYS', 'XIN-GA-PO': 'SGP', 'XIN-GA': 'SGP', 'IN-ĐÔ-NÊ-XI-A': 'IDN', 'IN-ĐÔ-NÊ': 'IDN', 
-        'CA-NA-DA': 'CAN', 'MÊ-XI-CÔ': 'MEX', 'HỒNG KÔNG': 'HKG', 'THỔ NHĨ KỲ': 'TUR', 'THỔ NHĨ': 'TUR', 'VƯƠNG QUỐC NA-UY': 'NOR',
-        'ÁC-HEN-TI-NA': 'ARG', 'AC-HEN-TI-NA': 'ARG', 'ITALIA': 'ITA', 'AI LÊN': 'IRL', 'NƯU TÂY LAN': 'NZL', 
-        'CĂM-PU-CHIA': 'KHM', 'CĂM PU CHIA': 'KHM', 'MA CAO': 'MAC', 'TRIỀU TIÊN': 'PRK', 'CU BA': 'CUB', 'CÔ-LÔM-BI-A': 'COL', 
-        'CHI-LÊ': 'CHL', 'CÁC TIỂU VƯƠNG QUỐC': 'ARE', 'Ả RẬP XÊ ÚT': 'SAU', 'U-CRAI-NA': 'UKR', 'BĂNG-LA-ĐÉT': 'BGD', 
-        'NÊ-PAN': 'NPL', 'PA-KÍT-XTAN': 'PAK', 'NI-GIÊ-RI-A': 'NGA', 'MA-RỐC': 'MAR', 'AN-GIÊ-RI': 'DZA', 'BÊ-LA-RÚT': 'BLR'
+        
+        # CÁC BIẾN THỂ PHIÊN ÂM/DỊCH THUẬT KHÁCH SẠN HAY DÙNG
+        'TRUNG QUỐC (ĐÀI LOAN)': 'TWN', 'CH HÀN': 'KOR', 'VƯƠNG QUỐC ANH VÀ BẮC AI LEN': 'GBR', 'VƯƠNG QUỐC ANH': 'GBR', 
+        'UK': 'GBR', 'Ô-XTRÂY-LI-A': 'AUS', 'Ô-XTRÂY': 'AUS', 'MA-LAI-XI-A': 'MYS', 'MA-LAI': 'MYS', 'XIN-GA-PO': 'SGP', 
+        'XIN-GA': 'SGP', 'IN-ĐÔ-NÊ-XI-A': 'IDN', 'IN-ĐÔ-NÊ': 'IDN', 'CA-NA-DA': 'CAN', 'MÊ-XI-CÔ': 'MEX', 'HỒNG KÔNG': 'HKG', 
+        'THỔ NHĨ KỲ': 'TUR', 'THỔ NHĨ': 'TUR', 'VƯƠNG QUỐC NA-UY': 'NOR', 'ÁC-HEN-TI-NA': 'ARG', 'AC-HEN-TI-NA': 'ARG', 
+        'ITALIA': 'ITA', 'AI LÊN': 'IRL', 'NƯU TÂY LAN': 'NZL', 'CĂM PU CHIA': 'KHM', 'MA CAO': 'MAC', 'TRIỀU TIÊN': 'PRK', 
+        'CU BA': 'CUB', 'CÔ-LÔM-BI-A': 'COL', 'CHI-LÊ': 'CHL', 'CÁC TIỂU VƯƠNG QUỐC': 'ARE', 'Ả RẬP XÊ ÚT': 'SAU', 
+        'U-CRAI-NA': 'UKR', 'BĂNG-LA-ĐÉT': 'BGD', 'NÊ-PAN': 'NPL', 'PA-KÍT-XTAN': 'PAK', 'NI-GIÊ-RI-A': 'NGA', 
+        'MA-RỐC': 'MAR', 'AN-GIÊ-RI': 'DZA', 'BÊ-LA-RÚT': 'BLR'
     }
     
-    if val in vn_map: return vn_map[val]
-    for vn_name, iso3 in vn_map.items():
-        if vn_name in val: return iso3
+    # 1. Ưu tiên tra cứu khớp 100% trước để tránh lỗi nhận diện nhầm chuỗi
+    if val in vn_map: 
+        return vn_map[val]
+        
+    # 2. Nếu không khớp 100%, mới tìm kiếm chuỗi con (Chỉ tìm các tên dài từ 4 ký tự trở lên để tránh nhầm mã 2 chữ cái)
+    sorted_keys = sorted(vn_map.keys(), key=len, reverse=True)
+    for vn_name in sorted_keys:
+        if len(vn_name) >= 4 and vn_name in val: 
+            return vn_map[vn_name]
+            
+    # 3. Trả về mã hệ thống quốc tế nếu không có trong từ điển
     try: return pycountry.countries.lookup(val).alpha_3
     except LookupError: return val
 
