@@ -13,7 +13,6 @@ import unicodedata
 # ==========================================
 
 def standardize_text(txt):
-    """Ép toàn bộ chuẩn Unicode Tiếng Việt về 1 chuẩn duy nhất (NFC) để tránh lỗi tàng hình"""
     if pd.isna(txt) or txt is None: return ""
     return unicodedata.normalize('NFC', str(txt)).strip().upper()
 
@@ -83,7 +82,8 @@ def get_iso3(val):
         'NG': 'NGA', 'MARỐC': 'MAR', 'MA-RỐC': 'MAR', 'MA': 'MAR', 
         'ALGERIA': 'DZA', 'AN-GIÊ-RI': 'DZA', 'DZ': 'DZA', 'KENYA': 'KEN', 
         'KE': 'KEN', 'TANZANIA': 'TZA', 'TZ': 'TZA', 'GHANA': 'GHA', 
-        'GH': 'GHA', 'ZAIRE': 'COD', 'ZR': 'COD'
+        'GH': 'GHA', 'ZAIRE': 'COD', 'ZR': 'COD',
+        'BELARUS': 'BLR', 'BÊ-LA-RÚT': 'BLR', 'BY': 'BLR' # BỔ SUNG QUỐC GIA MỚI TẠI ĐÂY
     }
     
     if val in vn_map: return vn_map[val]
@@ -291,8 +291,9 @@ def process_data(check_date, files_dict):
             if not match_nationality(b_dict.get('Nat'), c_dict.get('Nat')) and b_dict.get('Nat') and c_dict.get('Nat'): err += f"Lệch Quốc tịch ({b_dict.get('Nat')} vs {c_dict.get('Nat')}); "
             if b_dict.get('In') != c_dict.get('In') and pd.notna(b_dict.get('In')) and pd.notna(c_dict.get('In')): err += f"Lệch Ngày In ({format_date_vn(b_dict.get('In'))} vs {format_date_vn(c_dict.get('In'))}); "
             if b_dict.get('Out') != c_dict.get('Out') and pd.notna(b_dict.get('Out')) and pd.notna(c_dict.get('Out')): err += f"Lệch Ngày Out ({format_date_vn(b_dict.get('Out'))} vs {format_date_vn(c_dict.get('Out'))}); "
-            v_b, v_c = b_dict.get('Visa'), c_dict.get('Visa')
-            if pd.notna(v_b) and pd.notna(v_c) and v_b != v_c: err += f"Lệch Hạn Visa ({format_date_vn(v_b)} vs {format_date_vn(v_c)}); "
+            v_b = b_dict.get('Visa') if pd.notna(b_dict.get('Visa')) else None
+            v_c = c_dict.get('Visa') if pd.notna(c_dict.get('Visa')) else None
+            if v_b != v_c and v_b and v_c: err += f"Lệch Hạn Visa ({format_date_vn(v_b)} vs {format_date_vn(v_c)}); "
 
         if 'NOPASS_' in pPass: loai_loi, err = "Thiếu Passport", "Chưa nhập số Passport; "
         if not pRoom or pRoom == "0" or pRoom.upper() == "PM": loai_loi, err = "Trống Số Phòng", err + "Chưa gán phòng; "
