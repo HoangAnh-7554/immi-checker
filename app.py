@@ -433,8 +433,6 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(in_srcs[d])}: {format_date_vn(d)}" for d in ins])
             err += f"Lệch Ngày In ({diff}); "
             
-        # [BẢN VÁ LỖI CỐT LÕI - XỬ LÝ LỖI NGÀY OUT ẢO KHI KHÁCH GIA HẠN/TRẢ PHÒNG SỚM]
-        # Thay vì gộp toàn bộ ngày Out của 6 file vào báo lỗi, Tool sẽ kiểm tra tính đồng nhất của từng ca.
         if has_ca_hien_tai:
             outs_hien_tai_unique = []
             for s in ['kblt_chieu', 'gihf_chieu', 'pol_chieu']:
@@ -442,7 +440,6 @@ def process_data(check_date, files_dict):
                     d = srcs[s]['Out']
                     if d not in outs_hien_tai_unique: outs_hien_tai_unique.append(d)
             if len(outs_hien_tai_unique) > 1:
-                # Chỉ báo lỗi nếu bản thân các file HIỆN TẠI đang cắn nhau (VD: KBLT chiều khác GIHF chiều)
                 diff = " vs ".join([f"{get_srcs_str([s for s in ['kblt_chieu', 'gihf_chieu', 'pol_chieu'] if s in srcs and srcs[s].get('Out') == d])}: {format_date_vn(d)}" for d in outs_hien_tai_unique])
                 err += f"Lệch Ngày Out Hiện tại ({diff}); "
         elif has_ca_truoc:
@@ -483,40 +480,45 @@ def process_data(check_date, files_dict):
             elif not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: 
                 if pIn and 0 <= (check_dt - pIn).days <= 1: loai_loi = "Thiếu Police (Ca trước)"
 
+        # [BẢN VÁ LOGIC CỐT LÕI - GIA HẠN ĐƯỢC CẤP "VISA KÉP"]
         if has_ca_hien_tai:
             if pIn == check_dt or in_pc:
                 if (in_kc and out_c == check_dt) or (not in_kc and not in_gc and out_s == check_dt): 
-                    is_due, note = True, "[Day-use] Khách in/out trong ngày"
+                    is_due, is_stay, note = True, False, "[Day-use] Khách in/out trong ngày"
                 else: 
-                    is_stay, note = True, "Khách mới Check-in" if not pIn or pIn >= check_dt else "Khách Check-in hôm qua"
+                    is_stay, is_due, note = True, False, "Khách mới Check-in" if not pIn or pIn >= check_dt else "Khách Check-in hôm qua"
+            
             if in_ks or in_gs:
                 if out_s == check_dt:
                     if not in_kc and not in_gc: 
-                        is_due, note = True, "Đã Checked-out hoàn toàn"
+                        is_due, is_stay, note = True, False, "Đã Checked-out hoàn toàn"
                     elif out_c and out_c > check_dt: 
-                        is_stay, note = True, f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
+                        # ĐÂY LÀ ĐIỂM SÁNG GIÁ: Khách gia hạn từ hôm nay sẽ hiển thị trên cả 2 Tab (Due Out & Stayover)
+                        is_due, is_stay, note = True, True, f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
                     else: 
-                        is_due, note = True, "Chưa Checked-out (KBLT)"
+                        is_due, is_stay, note = True, False, "Chưa Checked-out (KBLT)"
                 elif out_s and out_s > check_dt:
                     if not in_kc and not in_gc: 
-                        is_due, note = True, "[Shorten] Trả phòng sớm"
+                        is_due, is_stay, note = True, False, "[Shorten] Trả phòng sớm"
                     else:
-                        is_stay = True
+                        is_stay, is_due = True, False
                         if out_c and out_c > out_s: 
                             note = f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
                         elif out_c and out_c < out_s and out_c == check_dt: 
-                            is_stay, is_due, note = False, True, "[Shorten] Trả phòng sớm"
+                            is_due, is_stay, note = True, False, "[Shorten] Trả phòng sớm"
+            
             if not any([in_ks, in_gs, in_ps, in_pc]) and not (pIn == check_dt):
-                 if out_c == check_dt: is_due = True 
-                 else: is_stay = True
+                 if out_c == check_dt: 
+                     is_due, is_stay = True, False
+                 else: 
+                     is_stay, is_due = True, False
         else:
-            if pIn == check_dt or in_ps: 
-                is_stay, note = True, "Khách Check-in hôm qua" if pIn and pIn < check_dt else "Khách mới Check-in"
-            if in_ks or in_gs:
-                if out_s == check_dt: 
-                    is_due, note = True, "Dự kiến Due Out"
-                elif out_s and out_s > check_dt: 
-                    is_stay = True
+            if out_s == check_dt:
+                is_due, is_stay, note = True, False, "Dự kiến Due Out"
+            elif pIn == check_dt or in_ps: 
+                is_stay, is_due, note = True, False, "Khách mới Check-in" if pIn == check_dt else "Khách Check-in hôm qua"
+            elif out_s and out_s > check_dt: 
+                is_stay, is_due = True, False
 
         pVisa = None
         for v in visas:
@@ -590,9 +592,10 @@ def process_data(check_date, files_dict):
             'Chi Tiết': err, 'Hồ Sơ': ""
         }
 
+        # LUỒNG XUẤT DỮ LIỆU ĐA CHIỀU KHÔNG CHẶN NHAU
         if loai_loi: rep_loi.append(row_data)
         if is_due: rep_due.append(row_data)
-        elif is_stay: rep_stay.append(row_data)
+        if is_stay: rep_stay.append(row_data)
 
     return pd.DataFrame(rep_loi), pd.DataFrame(rep_stay), pd.DataFrame(rep_due)
 
@@ -641,7 +644,7 @@ if st.button("🚀 CHẠY KIỂM TRA TỔNG HỢP", use_container_width=True):
         df_loi, df_stay, df_due = process_data(check_date, files)
         
         cols = ['Phòng', 'Tên Khách', 'Passport', 'Ngày sinh', 'Giới tính', 'Quốc tịch', 'Ngày In', 'Ngày Out', 'Hạn Visa']
-        final_loi_cols = ['Phân Loại'] + cols + ['Chi Tiết', 'Hồ Sơ']
+        final_loi_cols = ['Phân Loại'] + cols + ['Trạng Thái/Ghi Chú', 'Chi Tiết', 'Hồ Sơ']
         final_stay_cols = cols + ['Trạng Thái/Ghi Chú', 'Hồ Sơ']
         
         if df_loi.empty: df_loi = pd.DataFrame(columns=final_loi_cols)
@@ -654,9 +657,9 @@ if st.button("🚀 CHẠY KIỂM TRA TỔNG HỢP", use_container_width=True):
         else: df_due = sort_rooms(df_due)[final_stay_cols]
 
         tab1, tab2, tab3 = st.tabs(["📌 Lưu Ý (Báo lỗi)", "🛏️ Khách Lưu Trú (Stayover)", "🚪 Dự kiến Trả Phòng (Due Out)"])
-        with tab1: st.dataframe(df_loi, use_container_width=True)
+        with tab1: st.dataframe(df_loi.style.map(color_warning, subset=['Trạng Thái/Ghi Chú']), use_container_width=True)
         with tab2: st.dataframe(df_stay.style.map(color_warning, subset=['Trạng Thái/Ghi Chú']), use_container_width=True)
-        with tab3: st.dataframe(df_due, use_container_width=True)
+        with tab3: st.dataframe(df_due.style.map(color_warning, subset=['Trạng Thái/Ghi Chú']), use_container_width=True)
             
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
