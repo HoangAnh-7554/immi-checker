@@ -97,13 +97,26 @@ VN_MAP = {
     'XIN-GA': 'SGP', 'IN-ĐÔ-NÊ-XI-A': 'IDN', 'IN-ĐÔ-NÊ': 'IDN', 'CA-NA-DA': 'CAN', 'MÊ-XI-CÔ': 'MEX', 'HỒNG KÔNG': 'HKG', 
     'THỔ NHĨ KỲ': 'TUR', 'THỔ NHĨ': 'TUR', 'VƯƠNG QUỐC NA-UY': 'NOR', 'ÁC-HEN-TI-NA': 'ARG', 'AC-HEN-TI-NA': 'ARG', 
     'ITALIA': 'ITA', 'AI LÊN': 'IRL', 'NƯU TÂY LAN': 'NZL', 'CĂM-PU-CHIA': 'KHM', 'BĂNG-LA-ĐÉT': 'BGD', 'NÊ-PAN': 'NPL', 
-    'PA-KÍT-XTAN': 'PAK', 'NI-GIÊ-RI-A': 'NGA', 'MA-RỐC': 'MAR', 'AN-GIÊ-RI': 'DZA', 'BÊ-LA-RÚT': 'BLR'
+    'PA-KÍT-XTAN': 'PAK', 'NI-GIÊ-RI-A': 'NGA', 'MA-RỐC': 'MAR', 'AN-GIÊ-RI': 'DZA', 'BÊ-LA-RÚT': 'BLR',
+    'CH LIÊN BANG ĐỨC': 'DEU', 'CỘNG HÒA LIÊN BANG ĐỨC': 'DEU', 'CỘNG HOÀ LIÊN BANG ĐỨC': 'DEU'
 }
 VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 
 # ==========================================
 # 1. CÁC HÀM XỬ LÝ LÕI VÀ ĐỒNG BỘ DỮ LIỆU
 # ==========================================
+
+def get_src_name(s_key):
+    """Đổi tên nhãn nguồn dữ liệu cho dễ nhìn"""
+    s_lower = s_key.lower()
+    if 'kblt' in s_lower: return 'KBLT'
+    if 'gihf' in s_lower: return 'Opera'
+    if 'pol' in s_lower: return 'Police'
+    return s_key
+
+def get_srcs_str(s_keys):
+    """Gộp chung các nguồn trùng nhau (VD: KBLT+Opera)"""
+    return '+'.join(dict.fromkeys(get_src_name(s) for s in s_keys))
 
 def safe_str(val):
     if pd.isna(val) or val is None or str(val).strip().lower() in ['nan', 'none']: return ""
@@ -177,10 +190,6 @@ def is_dob_match(d1, d2):
     return False
 
 def parse_date(val, is_dob=False):
-    """
-    Bản vá siêu dịch giả: LUÔN cố gắng chuyển TẤT CẢ chuỗi ngày từ bất kỳ file nào 
-    (bao gồm Opera 15-SEP-26 hay Excel 15/09/2026) về định dạng Datetime chung.
-    """
     if pd.isna(val) or val is None: return None
     val_str = str(val).strip()
     if val_str.lower() in ["nan", "nat", "none", ""]: return None
@@ -190,7 +199,6 @@ def parse_date(val, is_dob=False):
         try: return val.to_pydatetime().replace(tzinfo=None)
         except: pass
         
-    # Luôn ưu tiên dịch định dạng Opera (Tiếng Anh) cho mọi nguồn dữ liệu
     try: return datetime.strptime(val_str.upper(), '%d-%b-%y').replace(tzinfo=None)
     except:
         try: return datetime.strptime(val_str.upper(), '%d-%b-%Y').replace(tzinfo=None)
@@ -201,8 +209,8 @@ def parse_date(val, is_dob=False):
         d, m, y = int(match.group(1)), int(match.group(2)), int(match.group(3))
         if y < 100: y += 1900 if (is_dob and y > 26) else 2000
         try: return datetime(y, m, d)
-        except: return val_str
-    return val_str
+        except: return None 
+    return None 
 
 def format_date_vn(dt):
     if pd.isna(dt) or dt is None: return ""
@@ -276,10 +284,8 @@ def process_data(check_date, files_dict):
                 
                 if not passp or passp == 'NAN': passp = f"NOPASS_{room}_{name[:5]}"
                 
-                # Bản fix triệt để: LUÔN DỊCH NGÀY THÁNG TỪ BẤT KỲ FILE NÀO
-                din = parse_date(r.get('Ngày đến '))
-                dout = parse_date(r.get('Thời gian dự kiến tạm trú tại CSLT'))
-                visa = parse_date(r.get('Thời hạn được phép tạm trú tại Việt Nam'))
+                din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
+                visa = r.get('Thời hạn được phép tạm trú tại Việt Nam', None)
                 
                 all_guests.append({
                     'Key': passp, 'Room': room, 'Name': name, 'DOB': r.get('Ngày sinh'), 
@@ -322,55 +328,125 @@ def process_data(check_date, files_dict):
         
         err = ""
         
+        # 1. Quét biến động Số Phòng
         rooms = []
+        room_srcs = {}
         for s in srcs:
             r = safe_str(srcs[s].get('Room'))
-            if r and r not in rooms: rooms.append(r)
+            if r:
+                if r not in rooms:
+                    rooms.append(r)
+                    room_srcs[r] = []
+                room_srcs[r].append(s)
         
         final_room_display = " ➔ ".join(rooms) if len(rooms) > 1 else (rooms[0] if rooms else pRoom)
-        if len(rooms) > 1: err += f"Lệch/Đổi Phòng ({' vs '.join(rooms)}); "
+        if len(rooms) > 1: 
+            diff = " vs ".join([f"{get_srcs_str(room_srcs[r])}: {r}" for r in rooms])
+            err += f"Lệch/Đổi Phòng ({diff}); "
         
+        # 2. Quét Tên
         names = []
+        name_srcs = {}
         for s in srcs:
-            n = srcs[s]['Name']
-            if n and not any(is_same_guest(n, ex_n) for ex_n in names): names.append(n)
-        if len(names) > 1: err += f"Lệch Tên ({' vs '.join(names)}); "
+            n = safe_str(srcs[s].get('Name'))
+            if n:
+                matched_n = next((ex_n for ex_n in names if is_same_guest(n, ex_n)), None)
+                if matched_n:
+                    name_srcs[matched_n].append(s)
+                else:
+                    names.append(n)
+                    name_srcs[n] = [s]
+        if len(names) > 1: 
+            diff = " vs ".join([f"{get_srcs_str(name_srcs[n])}: {n}" for n in names])
+            err += f"Lệch Tên ({diff}); "
         
+        # 3. Quét Passport
         passes = []
+        pass_srcs = {}
         for s in srcs:
-            p = srcs[s]['Key']
-            if p and "NOPASS_" not in p and p not in passes: passes.append(p)
-        if len(passes) > 1: err += f"Lệch Hộ chiếu ({' vs '.join(passes)}); "
+            p = safe_str(srcs[s].get('Key'))
+            if p and "NOPASS_" not in p:
+                if p not in passes:
+                    passes.append(p)
+                    pass_srcs[p] = []
+                pass_srcs[p].append(s)
+        if len(passes) > 1: 
+            diff = " vs ".join([f"{get_srcs_str(pass_srcs[p])}: {p}" for p in passes])
+            err += f"Lệch Hộ chiếu ({diff}); "
             
+        # 4. Quét Quốc tịch
         nats = []
+        nat_srcs = {}
         for s in srcs:
-            nt = srcs[s]['Nat']
-            if nt and not any(match_nationality(nt, ex_nt) for ex_nt in nats): nats.append(nt)
-        if len(nats) > 1: err += f"Lệch Quốc tịch ({' vs '.join(nats)}); "
+            nt = safe_str(srcs[s].get('Nat'))
+            if nt:
+                matched_nt = next((ex_nt for ex_nt in nats if match_nationality(nt, ex_nt)), None)
+                if matched_nt:
+                    nat_srcs[matched_nt].append(s)
+                else:
+                    nats.append(nt)
+                    nat_srcs[nt] = [s]
+        if len(nats) > 1: 
+            diff = " vs ".join([f"{get_srcs_str(nat_srcs[nt])}: {nt}" for nt in nats])
+            err += f"Lệch Quốc tịch ({diff}); "
             
+        # 5. Quét Ngày sinh
         dobs = []
+        dob_srcs = {}
         for s in srcs:
-            d = srcs[s]['DOB']
-            if pd.notna(d) and not any(is_dob_match(d, ex_d) for ex_d in dobs): dobs.append(d)
-        if len(dobs) > 1: err += f"Lệch Ngày sinh ({' vs '.join([format_date_vn(d) for d in dobs])}); "
+            d = srcs[s].get('DOB')
+            if pd.notna(d):
+                matched_d = next((ex_d for ex_d in dobs if is_dob_match(d, ex_d)), None)
+                if matched_d:
+                    dob_srcs[matched_d].append(s)
+                else:
+                    dobs.append(d)
+                    dob_srcs[d] = [s]
+        if len(dobs) > 1: 
+            diff = " vs ".join([f"{get_srcs_str(dob_srcs[d])}: {format_date_vn(d)}" for d in dobs])
+            err += f"Lệch Ngày sinh ({diff}); "
             
+        # 6. Quét Ngày In
         ins = []
+        in_srcs = {}
         for s in srcs:
-            d = srcs[s]['In']
-            if pd.notna(d) and d not in ins: ins.append(d)
-        if len(ins) > 1: err += f"Lệch Ngày In ({' vs '.join([format_date_vn(d) for d in ins])}); "
+            d = srcs[s].get('In')
+            if pd.notna(d):
+                if d not in ins:
+                    ins.append(d)
+                    in_srcs[d] = []
+                in_srcs[d].append(s)
+        if len(ins) > 1: 
+            diff = " vs ".join([f"{get_srcs_str(in_srcs[d])}: {format_date_vn(d)}" for d in ins])
+            err += f"Lệch Ngày In ({diff}); "
             
+        # 7. Quét Ngày Out
         outs = []
+        out_srcs = {}
         for s in srcs:
-            d = srcs[s]['Out']
-            if pd.notna(d) and d not in outs: outs.append(d)
-        if len(outs) > 1: err += f"Biến động Ngày Out/Extend ({' vs '.join([format_date_vn(d) for d in outs])}); "
+            d = srcs[s].get('Out')
+            if pd.notna(d):
+                if d not in outs:
+                    outs.append(d)
+                    out_srcs[d] = []
+                out_srcs[d].append(s)
+        if len(outs) > 1: 
+            diff = " vs ".join([f"{get_srcs_str(out_srcs[d])}: {format_date_vn(d)}" for d in outs])
+            err += f"Biến động Ngày Out/Extend ({diff}); "
             
+        # 8. Quét Hạn Visa
         visas = []
+        visa_srcs = {}
         for s in srcs:
-            d = srcs[s]['Visa']
-            if pd.notna(d) and d not in visas: visas.append(d)
-        if len(visas) > 1: err += f"Lệch Hạn Visa ({' vs '.join([format_date_vn(d) for d in visas])}); "
+            d = srcs[s].get('Visa')
+            if pd.notna(d) and isinstance(d, datetime):
+                if d not in visas:
+                    visas.append(d)
+                    visa_srcs[d] = []
+                visa_srcs[d].append(s)
+        if len(visas) > 1: 
+            diff = " vs ".join([f"{get_srcs_str(visa_srcs[d])}: {format_date_vn(d)}" for d in visas])
+            err += f"Lệch Hạn Visa ({diff}); "
 
         is_due, is_stay, note, loai_loi = False, False, "", ""
         if has_ca_hien_tai:
@@ -389,7 +465,6 @@ def process_data(check_date, files_dict):
         for v in visas:
             if isinstance(v, datetime): 
                 if pVisa is None or v > pVisa: pVisa = v
-            elif isinstance(v, str) and not pVisa: pVisa = v
 
         is_visa_expired_now = False
         if pVisa and isinstance(pVisa, datetime):
@@ -407,13 +482,16 @@ def process_data(check_date, files_dict):
                 err += f"[Sắp hết hạn] {msg}; "
 
         final_passport = passes[0] if passes else ""
-        for s in srcs:
-            if 'NOPASS_' in srcs[s]['Key']:
-                loai_loi = "Thiếu Passport"
-                err = "Chưa nhập số Passport; " + err
-                break
+        
+        # Định vị nguồn gốc quên nhập Passport
+        nopass_srcs = [s for s in srcs if 'NOPASS_' in srcs[s]['Key']]
+        if nopass_srcs:
+            loai_loi = "Thiếu Passport"
+            err = f"Chưa nhập số Passport trên {get_srcs_str(nopass_srcs)}; " + err
 
-        if not pRoom or pRoom == "0" or pRoom.upper() == "PM": loai_loi, err = "Trống Số Phòng", "Chưa gán phòng; " + err
+        if not pRoom or pRoom == "0" or pRoom.upper() == "PM": 
+            loai_loi = "Trống Số Phòng"
+            err = "Chưa gán phòng; " + err
 
         if is_visa_expired_now: loai_loi = "Visa Hết Hạn"
         elif err: 
@@ -432,6 +510,26 @@ def process_data(check_date, files_dict):
                 if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: loai_loi = "Thiếu Opera (Ca trước)"
                 if 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: loai_loi = "Thiếu KBLT (Ca trước)"
                 if not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: loai_loi = "Thiếu Police (Ca trước)"
+
+        # KIỂM TOÁN TẦNG 2: BẮT LỖI VISA RÁC/THIẾU TRÊN OPERA ĐỐI VỚI KHÁCH NƯỚC NGOÀI
+        if not is_vietnamese:
+            opera_missing = False
+            opera_garbage = []
+            for s in srcs:
+                if 'gihf' in s:
+                    v = srcs[s]['Visa']
+                    if pd.isna(v):
+                        opera_missing = True
+                    elif isinstance(v, str) and v.upper() not in ["MIỄN", "EXEMPT", "K/T", "-"]:
+                        opera_missing = True
+                        if v not in opera_garbage: opera_garbage.append(v)
+            
+            if opera_missing:
+                loai_loi = "Lưu ý" if not loai_loi else loai_loi
+                if opera_garbage:
+                    err += f"Chưa nhập Visa trên Opera (Đang chứa dữ liệu rác: {', '.join(opera_garbage)}); "
+                else:
+                    err += "Chưa nhập Visa trên Opera; "
 
         if note.startswith(" | "): note = note[3:]
 
