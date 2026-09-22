@@ -62,7 +62,8 @@ def extract_visa_date(txt):
 def format_date_vn(dt):
     if pd.isna(dt) or dt is None: return ""
     if isinstance(dt, str): return dt
-    return dt.strftime('%d/%m/%Y')
+    if hasattr(dt, 'strftime'): return dt.strftime('%d/%m/%Y')
+    return str(dt)
 
 def parse_kblt_excel(file):
     try:
@@ -124,7 +125,6 @@ def process_data(check_date, files_dict):
         records = []
         if not df.empty:
             for _, row in df.iterrows():
-                # Hỗ trợ lấy tên cột linh hoạt cho cả Opera XML và KBLT Excel
                 room_val = row.get('Số phòng', row.get('Phòng', ''))
                 room = str(room_val).strip().split('.')[0] if not pd.isna(room_val) else ""
                 
@@ -192,8 +192,18 @@ def process_data(check_date, files_dict):
 
         pRoom, pName, pPass, pIn, pOut, pVisa = data['Room'], base_src['Name'], base_src['Key'], base_src['In'], base_src['Out'], base_src['Visa']
         
-        out_s = srcs['kblt_sang']['Out'] if in_ks and srcs['kblt_sang'].get('Out') else (srcs['gihf_sang']['Out'] if in_gs and srcs['gihf_sang'].get('Out') else None)
-        out_c = srcs['kblt_chieu']['Out'] if in_kc and srcs['kblt_chieu'].get('Out') else (srcs['gihf_chieu']['Out'] if in_gc and srcs['gihf_chieu'].get('Out') else None)
+        # An toàn hóa việc lấy ngày Out
+        out_s = None
+        if in_ks and srcs['kblt_sang'].get('Out') is not None and not pd.isna(srcs['kblt_sang']['Out']):
+            out_s = srcs['kblt_sang']['Out']
+        elif in_gs and srcs['gihf_sang'].get('Out') is not None and not pd.isna(srcs['gihf_sang']['Out']):
+            out_s = srcs['gihf_sang']['Out']
+
+        out_c = None
+        if in_kc and srcs['kblt_chieu'].get('Out') is not None and not pd.isna(srcs['kblt_chieu']['Out']):
+            out_c = srcs['kblt_chieu']['Out']
+        elif in_gc and srcs['gihf_chieu'].get('Out') is not None and not pd.isna(srcs['gihf_chieu']['Out']):
+            out_c = srcs['gihf_chieu']['Out']
         
         is_due, is_stay, note, err, loai_loi = False, False, "", "", ""
         
@@ -208,18 +218,18 @@ def process_data(check_date, files_dict):
                 if out_s == check_dt:
                     if not in_kc and not in_gc:
                         is_due, note = True, "Đã Checked-out hoàn toàn"
-                    elif out_c and out_c > check_dt:
+                    elif out_c and not pd.isna(out_c) and out_c > check_dt:
                         is_stay, note = True, f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
                     else:
                         is_due, note = True, "Chưa Checked-out"
-                elif out_s and out_s > check_dt:
+                elif out_s and not pd.isna(out_s) and out_s > check_dt:
                     if not in_kc and not in_gc:
                         is_due, note = True, "[Shorten] Trả phòng sớm"
                     else:
                         is_stay = True
-                        if out_c and out_c > out_s:
+                        if out_c and not pd.isna(out_c) and out_c > out_s:
                             note = f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
-                        elif out_c and out_c < out_s and out_c == check_dt:
+                        elif out_c and not pd.isna(out_c) and out_c < out_s and out_c == check_dt:
                             is_stay, is_due, note = False, True, "[Shorten] Trả phòng sớm"
             
             if not any([in_ks, in_gs, in_ps, in_pc]):
@@ -230,7 +240,7 @@ def process_data(check_date, files_dict):
                 is_stay, note = True, "Khách Check-in hôm qua" if pIn and pIn < check_dt else "Khách mới Check-in"
             if in_ks or in_gs:
                 if out_s == check_dt: is_due, note = True, "Dự kiến Due Out"
-                elif out_s and out_s > check_dt: is_stay = True
+                elif out_s and not pd.isna(out_s) and out_s > check_dt: is_stay = True
 
         visa_dt = extract_visa_date(pVisa)
         if visa_dt:
@@ -262,7 +272,7 @@ def process_data(check_date, files_dict):
         if err: loai_loi = loai_loi or "Lệch Dữ Liệu"
         elif has_chieu and in_gc and not in_kc:
             if not (in_pc and not in_gc) and pIn and pIn < check_dt: loai_loi = "Thiếu KBLT (Chiều)"
-        elif has_chieu and in_kc and not in_gc and out_c and out_c > check_dt:
+        elif has_chieu and in_kc and not in_gc and out_c and not pd.isna(out_c) and out_c > check_dt:
             loai_loi = "Thiếu Opera (Chiều)"
         elif not has_chieu and in_gs and not in_ks and pIn and pIn <= check_dt:
             loai_loi = "Thiếu KBLT (Sáng)"
