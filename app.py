@@ -116,7 +116,6 @@ VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 # ==========================================
 
 def get_src_name(s_key):
-    """Đổi tên nhãn nguồn dữ liệu cho dễ nhìn"""
     s_lower = s_key.lower()
     if 'kblt' in s_lower: return 'KBLT'
     if 'gihf' in s_lower: return 'GIHF'
@@ -124,7 +123,6 @@ def get_src_name(s_key):
     return s_key
 
 def get_srcs_str(s_keys):
-    """Gộp chung các nguồn trùng nhau (VD: KBLT+GIHF)"""
     return '+'.join(dict.fromkeys(get_src_name(s) for s in s_keys))
 
 def safe_str(val):
@@ -435,18 +433,27 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(in_srcs[d])}: {format_date_vn(d)}" for d in ins])
             err += f"Lệch Ngày In ({diff}); "
             
-        outs = []
-        out_srcs = {}
-        for s in srcs:
-            d = srcs[s].get('Out')
-            if pd.notna(d):
-                if d not in outs:
-                    outs.append(d)
-                    out_srcs[d] = []
-                out_srcs[d].append(s)
-        if len(outs) > 1: 
-            diff = " vs ".join([f"{get_srcs_str(out_srcs[d])}: {format_date_vn(d)}" for d in outs])
-            err += f"Biến động Ngày Out/Extend ({diff}); "
+        # [BẢN VÁ LỖI CỐT LÕI - XỬ LÝ LỖI NGÀY OUT ẢO KHI KHÁCH GIA HẠN/TRẢ PHÒNG SỚM]
+        # Thay vì gộp toàn bộ ngày Out của 6 file vào báo lỗi, Tool sẽ kiểm tra tính đồng nhất của từng ca.
+        if has_ca_hien_tai:
+            outs_hien_tai_unique = []
+            for s in ['kblt_chieu', 'gihf_chieu', 'pol_chieu']:
+                if s in srcs and pd.notna(srcs[s].get('Out')):
+                    d = srcs[s]['Out']
+                    if d not in outs_hien_tai_unique: outs_hien_tai_unique.append(d)
+            if len(outs_hien_tai_unique) > 1:
+                # Chỉ báo lỗi nếu bản thân các file HIỆN TẠI đang cắn nhau (VD: KBLT chiều khác GIHF chiều)
+                diff = " vs ".join([f"{get_srcs_str([s for s in ['kblt_chieu', 'gihf_chieu', 'pol_chieu'] if s in srcs and srcs[s].get('Out') == d])}: {format_date_vn(d)}" for d in outs_hien_tai_unique])
+                err += f"Lệch Ngày Out Hiện tại ({diff}); "
+        elif has_ca_truoc:
+            outs_truoc_unique = []
+            for s in ['kblt_sang', 'gihf_sang', 'pol_sang']:
+                if s in srcs and pd.notna(srcs[s].get('Out')):
+                    d = srcs[s]['Out']
+                    if d not in outs_truoc_unique: outs_truoc_unique.append(d)
+            if len(outs_truoc_unique) > 1:
+                diff = " vs ".join([f"{get_srcs_str([s for s in ['kblt_sang', 'gihf_sang', 'pol_sang'] if s in srcs and srcs[s].get('Out') == d])}: {format_date_vn(d)}" for d in outs_truoc_unique])
+                err += f"Lệch Ngày Out Ca trước ({diff}); "
             
         visas = []
         visa_srcs = {}
@@ -463,8 +470,6 @@ def process_data(check_date, files_dict):
 
         is_due, is_stay, note, loai_loi = False, False, "", ""
         
-        # [BẢN VÁ LỖI CỐT LÕI]: Chỉ đánh cờ Thiếu File khi khách là Stayover (Ngày Out thực tế > Ngày Check).
-        # Khách Check-out trong ngày (Ngày Out == Ngày Check) thì bỏ qua, tự động xếp vào "Đã Checked-out hoàn toàn".
         if has_ca_hien_tai:
             if 'gihf_chieu' in uploaded_files and 'gihf_chieu' not in srcs:
                 if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu GIHF (Hiện tại)"
