@@ -33,7 +33,6 @@ def std_gender(g):
     return g
 
 def get_iso3(val):
-    """Bộ Não phiên dịch Quốc tịch: Dịch mọi mã, tên Tiếng Việt/Anh về chuẩn 3 chữ cái ISO"""
     if not val or pd.isna(val): return ""
     val = str(val).strip().upper()
     
@@ -93,7 +92,17 @@ def match_nationality(nat1, nat2):
     if not nat1 or not nat2: return False
     n1, n2 = str(nat1).strip().upper(), str(nat2).strip().upper()
     if n1 == n2: return True
-    return get_iso3(n1) == get_iso3(n2)
+    
+    iso1 = get_iso3(n1)
+    iso2 = get_iso3(n2)
+    
+    if iso1 == iso2: return True
+    
+    # LUẬT NGOẠI LỆ: KBLT khai báo Hồng Kông (HKG) hoặc Ma Cao (MAC) là Trung Quốc (CHN)
+    if {iso1, iso2}.issubset({'CHN', 'HKG'}) or {iso1, iso2}.issubset({'CHN', 'MAC'}):
+        return True
+        
+    return False
 
 def parse_date(val, is_dob=False, is_opera=False):
     if pd.isna(val) or val is None or str(val).strip() == "": return None
@@ -161,7 +170,7 @@ def parse_xml(file, is_police=False):
                 'Ngày sinh': parse_date(dob.text, is_dob=True) if dob is not None else None,
                 'Giới tính': std_gender(gender.text) if gender is not None else "",
                 'Quốc tịch': str(nat.text).strip().upper() if nat is not None else "",
-                'Số hộ chiếu': str(passport.text).strip() if passport is not None else "",
+                'Số hộ chiếu': str(passport.text).strip().upper() if passport is not None else "",
                 'Ngày đến ': parse_date(din.text, is_opera=(not is_police)),
                 'Thời gian dự kiến tạm trú tại CSLT': parse_date(dout.text, is_opera=(not is_police)),
                 'Thời hạn được phép tạm trú tại Việt Nam': visa.text if visa is not None else "",
@@ -186,8 +195,8 @@ def process_data(check_date, files_dict):
             for _, r in df.iterrows():
                 room = str(r.get('Số phòng', '')).strip().split('.')[0]
                 name = str(r.get('Họ tên', '')).strip()
-                passp = str(r.get('Số hộ chiếu', '')).strip()
-                if not passp or passp == 'nan': passp = f"NOPASS_{room}_{name[:5]}"
+                passp = str(r.get('Số hộ chiếu', '')).strip().upper()
+                if not passp or passp == 'NAN': passp = f"NOPASS_{room}_{name[:5]}"
                 
                 din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
                 if 'kblt' in source_label: din, dout = parse_date(din), parse_date(dout)
@@ -265,7 +274,6 @@ def process_data(check_date, files_dict):
         elif not has_chieu and in_ks and in_gs: b_dict, c_dict, n_b, n_c = srcs['kblt_sang'], srcs['gihf_sang'], "Web", "Opera"
         elif not has_chieu and in_ks and in_ps: b_dict, c_dict, n_b, n_c = srcs['kblt_sang'], srcs['pol_sang'], "Web", "Police"
 
-        # ĐỐI CHIẾU 9 TRƯỜNG DỮ LIỆU CHÍNH XÁC
         if b_dict and c_dict:
             if b_dict.get('Room') != c_dict.get('Room'): err += f"Lệch Phòng ({b_dict.get('Room')} vs {c_dict.get('Room')}); "
             if not is_same_guest(b_dict.get('Name', ''), c_dict.get('Name', '')): err += f"Lệch Tên ({b_dict.get('Name')} vs {c_dict.get('Name')}); "
