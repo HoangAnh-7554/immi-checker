@@ -17,47 +17,35 @@ def clean_name(name):
     return " ".join(name.split())
 
 def is_same_guest(name1, name2):
-    n1 = clean_name(name1)
-    n2 = clean_name(name2)
+    n1, n2 = clean_name(name1), clean_name(name2)
     if n1 == n2 or n1.replace(" ","") == n2.replace(" ",""): return True
-    if len(n1) > 8 and len(n2) > 8:
-        if n1.replace(" ","") in n2.replace(" ","") or n2.replace(" ","") in n1.replace(" ",""):
-            return True
-            
+    if len(n1) > 8 and len(n2) > 8 and (n1.replace(" ","") in n2.replace(" ","") or n2.replace(" ","") in n1.replace(" ","")): return True
     arr1 = [w for w in n1.split() if len(w) > 2 and w not in ["BIN", "BINTI", "THI", "VAN", "THE"]]
     arr2 = [w for w in n2.split() if len(w) > 2 and w not in ["BIN", "BINTI", "THI", "VAN", "THE"]]
-    
     match_count = sum(1 for w in arr1 if w in arr2)
     return match_count >= 2 or (len(arr1) <= 1 and match_count >= 1)
 
-def convert_opera_date(op_date):
-    if pd.isna(op_date) or not op_date: return None
-    if isinstance(op_date, datetime): return op_date.replace(tzinfo=None)
-    if hasattr(op_date, 'to_pydatetime'):
-        try: return op_date.to_pydatetime().replace(tzinfo=None)
+def parse_universal_date(val, is_opera=False):
+    """Hàm đọc ngày tháng vạn năng cho cả Excel và XML"""
+    if pd.isna(val) or val is None or str(val).strip() == "": return None
+    if isinstance(val, datetime): return val.replace(tzinfo=None)
+    if hasattr(val, 'to_pydatetime'):
+        try: return val.to_pydatetime().replace(tzinfo=None)
         except: pass
-    op_date = str(op_date).strip()
-    try:
-        return datetime.strptime(op_date, '%d-%b-%y').replace(tzinfo=None)
-    except:
+    
+    val_str = str(val).strip()
+    if is_opera:
+        try: return datetime.strptime(val_str, '%d-%b-%y').replace(tzinfo=None)
+        except: return None
+    else:
+        # Tìm định dạng dd/mm/yyyy trong Excel
+        match = re.search(r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b', val_str)
+        if match:
+            d, m, y = int(match.group(1)), int(match.group(2)), int(match.group(3))
+            if y < 100: y += 2000
+            try: return datetime(y, m, d)
+            except: return None
         return None
-
-def extract_visa_date(txt):
-    if pd.isna(txt) or not txt: return None
-    if isinstance(txt, datetime): return txt.replace(tzinfo=None)
-    if hasattr(txt, 'to_pydatetime'):
-        try: return txt.to_pydatetime().replace(tzinfo=None)
-        except: pass
-    txt = str(txt).strip()
-    match = re.search(r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b', txt)
-    if match:
-        d, m, y = int(match.group(1)), int(match.group(2)), int(match.group(3))
-        if y < 100: y += 2000
-        try:
-            return datetime(y, m, d)
-        except:
-            return None
-    return None
 
 def format_date_vn(dt):
     if pd.isna(dt) or dt is None: return ""
@@ -70,37 +58,46 @@ def parse_kblt_excel(file):
         df = pd.read_excel(file, header=9)
         if 'Thời hạn được phép tạm trú tại Việt Nam' in df.columns:
             df['Thời hạn được phép tạm trú tại Việt Nam'] = df['Thời hạn được phép tạm trú tại Việt Nam'].apply(
-                lambda x: x if extract_visa_date(x) is not None else None
+                lambda x: x if parse_universal_date(x, is_opera=False) is not None else None
             )
         return df
     except Exception as e:
         st.error(f"Lỗi đọc KBLT Excel: {e}")
         return pd.DataFrame()
 
-def parse_opera_xml(file):
+def parse_xml(file, is_police=False):
+    """Tách biệt thuật toán đọc XML cho Opera và Police để tránh râu ông nọ cắm cằm bà kia"""
     try:
         tree = ET.parse(file)
         root = tree.getroot()
         data = []
         for nd in root.findall('.//G_C9'):
-            name = nd.find('C12').text if nd.find('C12') is not None else (nd.find('C15').text if nd.find('C15') is not None else "")
-            passport = nd.find('C30').text if nd.find('C30') is not None else ""
-            room = nd.find('C42').text if nd.find('C42') is not None else ""
-            date_in_str = nd.find('C36').text if nd.find('C36') is not None else (nd.find('C42').text if nd.find('C42') is not None else "")
-            date_out_str = nd.find('C39').text if nd.find('C39') is not None else (nd.find('C45').text if nd.find('C45') is not None else "")
-            visa = nd.find('C33').text if nd.find('C33') is not None else ""
+            if not is_police: # Dành cho file GIHF
+                name = nd.find('C12').text if nd.find('C12') is not None else (nd.find('C15').text if nd.find('C15') is not None else "")
+                passport = nd.find('C30').text if nd.find('C30') is not None else ""
+                room = nd.find('C42').text if nd.find('C42') is not None else ""
+                din = nd.find('C36').text if nd.find('C36') is not None else ""
+                dout = nd.find('C39').text if nd.find('C39') is not None else ""
+                visa = nd.find('C33').text if nd.find('C33') is not None else ""
+            else: # Dành cho file POLICE
+                name = nd.find('C15').text if nd.find('C15') is not None else ""
+                passport = nd.find('C36').text if nd.find('C36') is not None else ""
+                room = nd.find('C60').text if nd.find('C60') is not None else ""
+                din = nd.find('C42').text if nd.find('C42') is not None else ""
+                dout = nd.find('C45').text if nd.find('C45') is not None else ""
+                visa = nd.find('C39').text if nd.find('C39') is not None else ""
             
             data.append({
-                'Họ tên': name.replace('*', ''),
-                'Số hộ chiếu': passport,
-                'Số phòng': str(room).strip().lstrip('0'),
-                'Ngày đến ': convert_opera_date(date_in_str),
-                'Thời gian dự kiến tạm trú tại CSLT': convert_opera_date(date_out_str),
+                'Họ tên': str(name).replace('*', '').strip() if name else "",
+                'Số hộ chiếu': str(passport).strip() if passport else "",
+                'Số phòng': str(room).strip().lstrip('0') if room else "",
+                'Ngày đến ': parse_universal_date(din, is_opera=True),
+                'Thời gian dự kiến tạm trú tại CSLT': parse_universal_date(dout, is_opera=True),
                 'Thời hạn được phép tạm trú tại Việt Nam': visa
             })
         return pd.DataFrame(data)
     except Exception as e:
-        st.error(f"Lỗi đọc Opera/Police XML: {e}")
+        st.error(f"Lỗi đọc XML: {e}")
         return pd.DataFrame()
 
 # ==========================================
@@ -112,8 +109,10 @@ def process_data(check_date, files_dict):
     dfs = {}
     for key, file in files_dict.items():
         if file is not None:
-            if file.name.endswith('.xml'):
-                dfs[key] = parse_opera_xml(file)
+            if 'pol_' in key:
+                dfs[key] = parse_xml(file, is_police=True)
+            elif 'gihf_' in key:
+                dfs[key] = parse_xml(file, is_police=False)
             else:
                 dfs[key] = parse_kblt_excel(file)
         else:
@@ -126,23 +125,28 @@ def process_data(check_date, files_dict):
         if not df.empty:
             for _, row in df.iterrows():
                 room_val = row.get('Số phòng', row.get('Phòng', ''))
-                room = str(room_val).strip().split('.')[0] if not pd.isna(room_val) else ""
+                room = str(room_val).strip().split('.')[0] if not pd.isna(room_val) and room_val else ""
                 
                 name_val = row.get('Họ tên', row.get('Họ và tên', ''))
-                name = str(name_val).strip() if not pd.isna(name_val) else ""
+                name = str(name_val).strip() if not pd.isna(name_val) and name_val else ""
                 
                 passp_val = row.get('Số hộ chiếu', row.get('Số giấy tờ', row.get('Số GTTN', '')))
-                passp = str(passp_val).strip() if not pd.isna(passp_val) else ""
+                passp = str(passp_val).strip() if not pd.isna(passp_val) and passp_val else ""
                 if not passp or passp == 'nan': passp = f"NOPASS_{room}_{name[:5]}"
                 
                 din_val = row.get('Ngày đến ', row.get('Ngày đến', row.get('Từ ngày', None)))
-                din = convert_opera_date(din_val) if not pd.isna(din_val) else None
-                
                 dout_val = row.get('Thời gian dự kiến tạm trú tại CSLT', row.get('Ngày đi', row.get('Đến ngày', None)))
-                dout = convert_opera_date(dout_val) if not pd.isna(dout_val) else None
+                
+                # XML đã ép kiểu sẵn lúc parse, Excel thì ép kiểu ở đây
+                if 'kblt' in source_label:
+                    din = parse_universal_date(din_val, is_opera=False)
+                    dout = parse_universal_date(dout_val, is_opera=False)
+                else:
+                    din = din_val
+                    dout = dout_val
                 
                 visa_val = row.get('Thời hạn được phép tạm trú tại Việt Nam', row.get('Hạn tạm trú', ''))
-                visa = str(visa_val).strip() if not pd.isna(visa_val) else ""
+                visa = str(visa_val).strip() if not pd.isna(visa_val) and visa_val else ""
                 
                 records.append({
                     'Key': passp, 'Room': room, 'Name': name, 
@@ -166,15 +170,10 @@ def process_data(check_date, files_dict):
         
         if found_key is None:
             found_key = g['Key']
-            master_dict[found_key] = {
-                'Room': g['Room'], 'Name': g['Name'], 'Key': g['Key'],
-                'Srcs': {}
-            }
-        
+            master_dict[found_key] = {'Room': g['Room'], 'Name': g['Name'], 'Key': g['Key'], 'Srcs': {}}
         master_dict[found_key]['Srcs'][g['Src']] = g
 
     has_chieu = not dfs['kblt_chieu'].empty or not dfs['gihf_chieu'].empty
-    
     rep_loi, rep_stay, rep_due = [], [], []
     check_dt = datetime.combine(check_date, datetime.min.time())
 
@@ -192,18 +191,8 @@ def process_data(check_date, files_dict):
 
         pRoom, pName, pPass, pIn, pOut, pVisa = data['Room'], base_src['Name'], base_src['Key'], base_src['In'], base_src['Out'], base_src['Visa']
         
-        # An toàn hóa việc lấy ngày Out
-        out_s = None
-        if in_ks and srcs['kblt_sang'].get('Out') is not None and not pd.isna(srcs['kblt_sang']['Out']):
-            out_s = srcs['kblt_sang']['Out']
-        elif in_gs and srcs['gihf_sang'].get('Out') is not None and not pd.isna(srcs['gihf_sang']['Out']):
-            out_s = srcs['gihf_sang']['Out']
-
-        out_c = None
-        if in_kc and srcs['kblt_chieu'].get('Out') is not None and not pd.isna(srcs['kblt_chieu']['Out']):
-            out_c = srcs['kblt_chieu']['Out']
-        elif in_gc and srcs['gihf_chieu'].get('Out') is not None and not pd.isna(srcs['gihf_chieu']['Out']):
-            out_c = srcs['gihf_chieu']['Out']
+        out_s = srcs['kblt_sang']['Out'] if in_ks and srcs['kblt_sang'].get('Out') is not None and not pd.isna(srcs['kblt_sang']['Out']) else (srcs['gihf_sang']['Out'] if in_gs and srcs['gihf_sang'].get('Out') is not None and not pd.isna(srcs['gihf_sang']['Out']) else None)
+        out_c = srcs['kblt_chieu']['Out'] if in_kc and srcs['kblt_chieu'].get('Out') is not None and not pd.isna(srcs['kblt_chieu']['Out']) else (srcs['gihf_chieu']['Out'] if in_gc and srcs['gihf_chieu'].get('Out') is not None and not pd.isna(srcs['gihf_chieu']['Out']) else None)
         
         is_due, is_stay, note, err, loai_loi = False, False, "", "", ""
         
@@ -242,7 +231,7 @@ def process_data(check_date, files_dict):
                 if out_s == check_dt: is_due, note = True, "Dự kiến Due Out"
                 elif out_s and not pd.isna(out_s) and out_s > check_dt: is_stay = True
 
-        visa_dt = extract_visa_date(pVisa)
+        visa_dt = parse_universal_date(pVisa, is_opera=False)
         if visa_dt:
             days_left = (visa_dt - check_dt).days
             if days_left < 0: note += " | [VISA HẾT HẠN]"
@@ -282,15 +271,19 @@ def process_data(check_date, files_dict):
         if note.startswith(" | "): note = note[3:]
 
         row_data = {
-            'Phòng': pRoom, 'Tên Khách': pName.upper(), 'Passport': pPass if 'NOPASS_' not in pPass else "",
-            'Ngày In': format_date_vn(pIn), 'Ngày Out': format_date_vn(pOut),
+            'Phân Loại': loai_loi if loai_loi else "",
+            'Phòng': pRoom, 
+            'Tên Khách': pName.upper(), 
+            'Passport': pPass if 'NOPASS_' not in pPass else "",
+            'Ngày In': format_date_vn(pIn), 
+            'Ngày Out': format_date_vn(pOut),
             'Hạn Visa': format_date_vn(visa_dt) if visa_dt else "",
             'Trạng Thái/Ghi Chú': note.strip(), 
+            'Chi Tiết Lỗi': err,
             'Hồ Sơ': ""
         }
 
-        if loai_loi:
-            rep_loi.append({**{'Phân Loại': loai_loi}, **row_data, 'Chi Tiết Lỗi': err})
+        if loai_loi: rep_loi.append(row_data)
         if is_due: rep_due.append(row_data)
         elif is_stay: rep_stay.append(row_data)
 
@@ -333,18 +326,19 @@ if st.button("🚀 CHẠY KIỂM TRA ĐỐI CHIẾU", use_container_width=True):
     else:
         df_loi, df_stay, df_due = process_data(check_date, files)
         
-        if not df_loi.empty: df_loi = df_loi.sort_values(by="Phòng")
-        if not df_stay.empty: df_stay = df_stay.sort_values(by="Phòng")
-        if not df_due.empty: df_due = df_due.sort_values(by="Phòng")
+        # Sắp xếp và tùy chỉnh cột hiển thị
+        if not df_loi.empty: 
+            df_loi = df_loi.sort_values(by="Phòng")[['Phân Loại', 'Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Chi Tiết Lỗi', 'Hồ Sơ']]
+        if not df_stay.empty: 
+            df_stay = df_stay.sort_values(by="Phòng")[['Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Hạn Visa', 'Trạng Thái/Ghi Chú', 'Hồ Sơ']]
+        if not df_due.empty: 
+            df_due = df_due.sort_values(by="Phòng")[['Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Hạn Visa', 'Trạng Thái/Ghi Chú', 'Hồ Sơ']]
 
         tab1, tab2, tab3 = st.tabs(["🚨 Lỗi Dữ Liệu", "🛏️ Stayover", "🚪 Due Out"])
         
-        with tab1:
-            st.dataframe(df_loi, use_container_width=True)
-        with tab2:
-            st.dataframe(df_stay, use_container_width=True)
-        with tab3:
-            st.dataframe(df_due, use_container_width=True)
+        with tab1: st.dataframe(df_loi, use_container_width=True)
+        with tab2: st.dataframe(df_stay, use_container_width=True)
+        with tab3: st.dataframe(df_due, use_container_width=True)
             
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
