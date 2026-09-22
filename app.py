@@ -186,22 +186,16 @@ def process_data(check_date, files_dict):
                 name = str(r.get('Họ tên', '')).strip()
                 passp = str(r.get('Số hộ chiếu', '')).strip().upper()
                 if not passp or passp == 'NAN': passp = f"NOPASS_{room}_{name[:5]}"
-                
                 din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
                 if 'kblt' in source_label: din, dout = parse_date(din), parse_date(dout)
                 
-                # QUAN TRỌNG: Không ép kiểu chuỗi cho Hạn Visa ở đây, giữ nguyên datetime hoặc parse_date
                 visa_raw = r.get('Thời hạn được phép tạm trú tại Việt Nam', None)
-                if 'kblt' not in source_label and isinstance(visa_raw, str):
-                    visa = parse_date(visa_raw)
-                else:
-                    visa = visa_raw
+                visa = parse_date(visa_raw) if ('kblt' not in source_label and isinstance(visa_raw, str)) else visa_raw
                 
                 records.append({
                     'Key': passp, 'Room': room, 'Name': name, 
                     'DOB': r.get('Ngày sinh'), 'Gender': r.get('Giới tính', ''), 'Nat': r.get('Quốc tịch', ''),
-                    'In': din, 'Out': dout, 'Visa': visa, 
-                    'Src': source_label
+                    'In': din, 'Out': dout, 'Visa': visa, 'Src': source_label
                 })
         return records
 
@@ -231,7 +225,10 @@ def process_data(check_date, files_dict):
         
         out_s = srcs['kblt_sang']['Out'] if in_ks and pd.notna(srcs['kblt_sang'].get('Out')) else (srcs['gihf_sang']['Out'] if in_gs and pd.notna(srcs['gihf_sang'].get('Out')) else None)
         out_c = srcs['kblt_chieu']['Out'] if in_kc and pd.notna(srcs['kblt_chieu'].get('Out')) else (srcs['gihf_chieu']['Out'] if in_gc and pd.notna(srcs['gihf_chieu'].get('Out')) else None)
-        chot_out_date = out_c if pd.notna(out_c) else (out_s if pd.notna(out_s) else pOut)
+        
+        # LOGIC TỐI ƯU MỚI: Thu thập tất cả Ngày Out và chọn ra Ngày muộn nhất (Max Out Date)
+        all_outs = [d for d in [out_c, out_s, pOut] if pd.notna(d)]
+        chot_out_date = max(all_outs) if all_outs else None
         
         is_due, is_stay, note, err, loai_loi = False, False, "", "", ""
         
@@ -266,7 +263,7 @@ def process_data(check_date, files_dict):
             if days_to_check < 0: 
                 is_visa_expired_now = True
                 err += f"Khách đã hết hạn Visa từ {format_date_vn(pVisa)}; "
-            elif chot_out_date and pd.notna(chot_out_date) and pVisa < chot_out_date:
+            elif chot_out_date and pVisa < chot_out_date:
                 note += f" | 🚨 [CẢNH BÁO] Visa ({format_date_vn(pVisa)}) HẾT HẠN trước Ngày Out!"
             elif days_to_check <= 7: 
                 note += f" | ⚠️ [LƯU Ý] Visa sắp hết hạn ({format_date_vn(pVisa)}) - Còn {days_to_check} ngày."
@@ -285,7 +282,6 @@ def process_data(check_date, files_dict):
             if not match_nationality(b_dict.get('Nat'), c_dict.get('Nat')) and b_dict.get('Nat') and c_dict.get('Nat'): err += f"Lệch Quốc tịch ({b_dict.get('Nat')} vs {c_dict.get('Nat')}); "
             if b_dict.get('In') != c_dict.get('In') and pd.notna(b_dict.get('In')) and pd.notna(c_dict.get('In')): err += f"Lệch Ngày In ({format_date_vn(b_dict.get('In'))} vs {format_date_vn(c_dict.get('In'))}); "
             if b_dict.get('Out') != c_dict.get('Out') and pd.notna(b_dict.get('Out')) and pd.notna(c_dict.get('Out')): err += f"Lệch Ngày Out ({format_date_vn(b_dict.get('Out'))} vs {format_date_vn(c_dict.get('Out'))}); "
-            
             v_b = b_dict.get('Visa') if pd.notna(b_dict.get('Visa')) else None
             v_c = c_dict.get('Visa') if pd.notna(c_dict.get('Visa')) else None
             if v_b != v_c and v_b and v_c: err += f"Lệch Hạn Visa ({format_date_vn(v_b)} vs {format_date_vn(v_c)}); "
@@ -311,7 +307,7 @@ def process_data(check_date, files_dict):
             'Phòng': pRoom, 'Tên Khách': pName.upper(), 'Passport': pPass if 'NOPASS_' not in pPass else "",
             'Ngày sinh': format_date_vn(pDOB), 'Giới tính': pGender, 'Quốc tịch': pNat,
             'Ngày In': format_date_vn(pIn), 'Ngày Out': format_date_vn(pOut),
-            'Hạn Visa': format_date_vn(pVisa), # IN TRỰC TIẾP RA CỘT
+            'Hạn Visa': format_date_vn(pVisa),
             'Trạng Thái/Ghi Chú': note.strip(), 'Chi Tiết': err, 'Hồ Sơ': ""
         }
 
