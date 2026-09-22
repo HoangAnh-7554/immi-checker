@@ -467,18 +467,31 @@ def process_data(check_date, files_dict):
 
         is_due, is_stay, note, loai_loi = False, False, "", ""
         
+        # [BẢN VÁ LỖI CỘT CHI TIẾT]: Bổ sung ghi chú File bị thiếu thay vì chỉ hiện tên lỗi
         if has_ca_hien_tai:
             if 'gihf_chieu' in uploaded_files and 'gihf_chieu' not in srcs:
-                if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu GIHF (Hiện tại)"
+                if chot_out_date and chot_out_date > check_dt: 
+                    loai_loi = "Thiếu GIHF (Hiện tại)"
+                    err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên GIHF; "
             elif 'kblt_chieu' in uploaded_files and 'kblt_chieu' not in srcs:
-                if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu KBLT (Hiện tại)"
+                if chot_out_date and chot_out_date > check_dt: 
+                    loai_loi = "Thiếu KBLT (Hiện tại)"
+                    err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên KBLT; "
             elif not is_vietnamese and 'pol_chieu' in uploaded_files and 'pol_chieu' not in srcs:
-                if pIn == check_dt: loai_loi = "Thiếu Police (Hiện tại)"
+                if pIn == check_dt: 
+                    loai_loi = "Thiếu Police (Hiện tại)"
+                    err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên Police; "
         elif has_ca_truoc:
-            if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: loai_loi = "Thiếu GIHF (Ca trước)"
-            elif 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: loai_loi = "Thiếu KBLT (Ca trước)"
+            if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: 
+                loai_loi = "Thiếu GIHF (Ca trước)"
+                err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên GIHF; "
+            elif 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: 
+                loai_loi = "Thiếu KBLT (Ca trước)"
+                err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên KBLT; "
             elif not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: 
-                if pIn and 0 <= (check_dt - pIn).days <= 1: loai_loi = "Thiếu Police (Ca trước)"
+                if pIn and 0 <= (check_dt - pIn).days <= 1: 
+                    loai_loi = "Thiếu Police (Ca trước)"
+                    err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên Police; "
 
         if has_ca_hien_tai:
             if pIn == check_dt or in_pc:
@@ -575,17 +588,10 @@ def process_data(check_date, files_dict):
 
         if note.startswith(" | "): note = note[3:]
 
-        # ==========================================
-        # [BẢN VÁ LỖI CỐT LÕI - DỌN DẸP BÁO CÁO RÁC & CẤP VISA KÉP]
-        # ==========================================
-        
-        # 1. Nếu khách "Đã Checked-out hoàn toàn", dọn sạch mọi lỗi (Không đưa vào Sheet Lưu Ý nữa)
         if "Đã Checked-out hoàn toàn" in note:
             loai_loi = ""
             err = ""
             
-        # 2. Nếu khách có biến động "Gia hạn (Extend)" hoặc "Cắt ngày (Shorten)", 
-        # bắt buộc ép hiển thị ở Sheet Due Out để Lễ tân đối soát
         if "[Extend]" in note or "[Shorten]" in note:
             is_due = True
 
