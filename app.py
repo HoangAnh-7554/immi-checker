@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import re
 from datetime import datetime
 import io
+import numpy as np
 import pycountry
 
 # ==========================================
@@ -28,35 +29,71 @@ def std_gender(g):
     if pd.isna(g) or not g: return ""
     g = str(g).strip().upper()
     if g in ['M', 'NAM', 'MR.', 'MR', 'MALE']: return 'NAM'
-    if g in ['F', 'NỮ', 'NU', 'MS', 'MRS.', 'MRS', 'FEMALE']: return 'NỮ'
+    if g in ['F', 'NỮ', 'NU', 'MS', 'MRS.', 'MRS', 'FEMALE', 'MISS']: return 'NỮ'
     return g
 
+def get_iso3(val):
+    """Bộ Não phiên dịch Quốc tịch: Dịch mọi mã và tên về chuẩn 3 chữ cái ISO"""
+    if not val or pd.isna(val): return ""
+    val = str(val).strip().upper()
+    
+    # 1. Dùng thư viện Quốc tế pycountry
+    try: return pycountry.countries.lookup(val).alpha_3
+    except LookupError: pass
+        
+    # 2. Dùng từ điển nội bộ (Được tối ưu từ KBLT và Bảng mã Opera Vũng Tàu)
+    vn_map = {
+        'VIỆT NAM': 'VNM', 'VN': 'VNM', 'ĐÀI LOAN': 'TWN', 'TW': 'TWN', 
+        'TRUNG QUỐC': 'CHN', 'CN': 'CHN', 'CH HÀN': 'KOR', 'HÀN QUỐC': 'KOR', 
+        'KR': 'KOR', 'NHẬT BẢN': 'JPN', 'JP': 'JPN', 'HOA KỲ': 'USA', 
+        'MỸ': 'USA', 'US': 'USA', 'VƯƠNG QUỐC ANH': 'GBR', 'ANH': 'GBR', 
+        'GB': 'GBR', 'UK': 'GBR', 'ÚC': 'AUS', 'Ô-XTRÂY-LI-A': 'AUS', 
+        'AU': 'AUS', 'HÀ LAN': 'NLD', 'NL': 'NLD', 'PHÁP': 'FRA', 
+        'FR': 'FRA', 'FX': 'FRA', 'ĐỨC': 'DEU', 'DE': 'DEU', 'NGA': 'RUS', 
+        'RU': 'RUS', 'RQ': 'RUS', 'THÁI LAN': 'THA', 'TH': 'THA', 
+        'MALAYSIA': 'MYS', 'MA-LA-XI-A': 'MYS', 'MY': 'MYS', 'SINGAPORE': 'SGP', 
+        'XIN-GA-PO': 'SGP', 'SG': 'SGP', 'INDONESIA': 'IDN', 'IN-ĐÔ-NÊ': 'IDN', 
+        'ID': 'IDN', 'PHILIPPINES': 'PHL', 'PH': 'PHL', 'ẤN ĐỘ': 'IND', 
+        'IN': 'IND', 'CANADA': 'CAN', 'CA-NA-DA': 'CAN', 'CA': 'CAN', 
+        'MEXICO': 'MEX', 'MÊ-XI-CÔ': 'MEX', 'MX': 'MEX', 'NAM PHI': 'ZAF', 
+        'ZA': 'ZAF', 'HỒNG KÔNG': 'HKG', 'HK': 'HKG', 'THỔ NHĨ': 'TUR', 
+        'TR': 'TUR', 'NA UY': 'NOR', 'NO': 'NOR', 'BA LAN': 'POL', 
+        'PL': 'POL', 'ARGENTINA': 'ARG', 'ÁC-HEN-TI-NA': 'ARG', 'AR': 'ARG', 
+        'BRAZIL': 'BRA', 'BR': 'BRA', 'TÂY BAN NHA': 'ESP', 'ES': 'ESP', 
+        'BỒ ĐÀO NHA': 'PRT', 'PT': 'PRT', 'Ý': 'ITA', 'ITALIA': 'ITA', 
+        'IT': 'ITA', 'THỤY SĨ': 'CHE', 'CH': 'CHE', 'THỤY ĐIỂN': 'SWE', 
+        'SE': 'SWE', 'ĐAN MẠCH': 'DNK', 'DK': 'DNK', 'PHẦN LAN': 'FIN', 
+        'FI': 'FIN', 'ÁO': 'AUT', 'AT': 'AUT', 'BỈ': 'BEL', 'BE': 'BEL', 
+        'HY LẠP': 'GRC', 'GR': 'GRC', 'IRELAND': 'IRL', 'AI LÊN': 'IRL', 
+        'IE': 'IRL', 'NEW ZEALAND': 'NZL', 'NƯU TÂY LAN': 'NZL', 'NZ': 'NZL', 
+        'CAMPUCHIA': 'KHM', 'KH': 'KHM', 'LÀO': 'LAO', 'LA': 'LAO', 
+        'MYANMAR': 'MMR', 'MM': 'MMR', 'MACAU': 'MAC', 'MA CAO': 'MAC', 
+        'MO': 'MAC', 'TRIỀU TIÊN': 'PRK', 'KP': 'PRK', 'CUBA': 'CUB', 
+        'CU BA': 'CUB', 'CU': 'CUB', 'COLOMBIA': 'COL', 'CÔ-LÔM-BI-A': 'COL', 
+        'CO': 'COL', 'CHILE': 'CHL', 'CHI-LÊ': 'CHL', 'CL': 'CHL', 
+        'PERU': 'PER', 'PE': 'PER', 'AI CẬP': 'EGY', 'EG': 'EGY', 
+        'UAE': 'ARE', 'CÁC TIỂU VƯƠNG QUỐC': 'ARE', 'AE': 'ARE', 
+        'Ả RẬP XÊ ÚT': 'SAU', 'SA': 'SAU', 'QATAR': 'QAT', 'QA': 'QAT', 
+        'ISRAEL': 'ISR', 'IL': 'ISR', 'UKRAINE': 'UKR', 'U-CRAI-NA': 'UKR', 
+        'UA': 'UKR', 'BANGLADESH': 'BGD', 'BĂNG-LA-ĐÉT': 'BGD', 'BD': 'BGD', 
+        'NEPAL': 'NPL', 'NÊ-PAN': 'NPL', 'NP': 'NPL', 'SRI LANKA': 'LKA', 
+        'LK': 'LKA', 'PAKISTAN': 'PAK', 'PA-KÍT-XTAN': 'PAK', 'PK': 'PAK', 
+        'MÔNG CỔ': 'MNG', 'MN': 'MNG', 'KAZAKHSTAN': 'KAZ', 'KZ': 'KAZ', 
+        'UZBEKISTAN': 'UZB', 'UZ': 'UZB', 'NIGERIA': 'NGA', 'NI-GIÊ-RI-A': 'NGA', 
+        'NG': 'NGA', 'MARỐC': 'MAR', 'MA-RỐC': 'MAR', 'MA': 'MAR', 
+        'ALGERIA': 'DZA', 'AN-GIÊ-RI': 'DZA', 'DZ': 'DZA', 'KENYA': 'KEN', 
+        'KE': 'KEN', 'TANZANIA': 'TZA', 'TZ': 'TZA', 'GHANA': 'GHA', 
+        'GH': 'GHA', 'ZAIRE': 'COD', 'ZR': 'COD'
+    }
+    for vn_name, iso3 in vn_map.items():
+        if vn_name in val or val in vn_name: return iso3
+    return val
+
 def match_nationality(nat1, nat2):
-    """
-    Sử dụng thư viện pycountry tự động tra cứu mã quốc tế.
-    So khớp được giữa mã 2 chữ cái (VN), mã 3 chữ (VNM), và tên Tiếng Anh (Vietnam)
-    """
+    if not nat1 or not nat2: return False
     n1, n2 = str(nat1).strip().upper(), str(nat2).strip().upper()
     if n1 == n2: return True
-    if not n1 or not n2: return False
-    
-    def get_country_code(val):
-        try:
-            # Thử tìm theo mã 2 chữ, 3 chữ, hoặc tên Tiếng Anh
-            country = pycountry.countries.lookup(val)
-            return country.alpha_3 # Chuẩn hóa tất cả về mã 3 chữ cái (VD: VNM, USA)
-        except LookupError:
-            # Xử lý các ngoại lệ tên Tiếng Việt không có trong từ điển chuẩn
-            vn_map = {'VIỆT NAM': 'VNM', 'TRUNG QUỐC': 'CHN', 'HÀN QUỐC': 'KOR', 'ĐÀI LOAN': 'TWN', 
-                      'NHẬT BẢN': 'JPN', 'HOA KỲ': 'USA', 'MỸ': 'USA', 'VƯƠNG QUỐC ANH': 'GBR', 'ÚC': 'AUS',
-                      'HÀ LAN': 'NLD', 'PHÁP': 'FRA', 'ĐỨC': 'DEU', 'NGA': 'RUS', 'THÁI LAN': 'THA'}
-            for vn_name, iso_code in vn_map.items():
-                if vn_name in val: return iso_code
-            return val
-            
-    code1 = get_country_code(n1)
-    code2 = get_country_code(n2)
-    return code1 == code2
+    return get_iso3(n1) == get_iso3(n2)
 
 def parse_date(val, is_dob=False, is_opera=False):
     if pd.isna(val) or val is None or str(val).strip() == "": return None
@@ -136,7 +173,7 @@ def parse_xml(file, is_police=False):
         return pd.DataFrame()
 
 # ==========================================
-# 3. ĐỐI CHIẾU DỮ LIỆU
+# 3. ĐỐI CHIẾU 9 TRƯỜNG DỮ LIỆU
 # ==========================================
 def process_data(check_date, files_dict):
     st.info("Đang tiến hành soi chiếu 9 trường dữ liệu...")
@@ -196,7 +233,6 @@ def process_data(check_date, files_dict):
             if pIn == check_dt or in_pc:
                 if (in_kc and out_c == check_dt) or (not in_kc and not in_gc and out_s == check_dt): is_due, note = True, "[Day-use] Khách in/out trong ngày"
                 else: is_stay, note = True, "Khách mới Check-in" if not pIn or pIn >= check_dt else "Khách Check-in hôm qua"
-            
             if in_ks or in_gs:
                 if out_s == check_dt:
                     if not in_kc and not in_gc: is_due, note = True, "Đã Checked-out hoàn toàn"
@@ -208,7 +244,6 @@ def process_data(check_date, files_dict):
                         is_stay = True
                         if out_c and pd.notna(out_c) and out_c > out_s: note = f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
                         elif out_c and pd.notna(out_c) and out_c < out_s and out_c == check_dt: is_stay, is_due, note = False, True, "[Shorten] Trả phòng sớm"
-            
             if not any([in_ks, in_gs, in_ps, in_pc]):
                  if out_c == check_dt: is_due = True 
                  else: is_stay = True
@@ -230,15 +265,16 @@ def process_data(check_date, files_dict):
         elif not has_chieu and in_ks and in_gs: b_dict, c_dict, n_b, n_c = srcs['kblt_sang'], srcs['gihf_sang'], "Web", "Opera"
         elif not has_chieu and in_ks and in_ps: b_dict, c_dict, n_b, n_c = srcs['kblt_sang'], srcs['pol_sang'], "Web", "Police"
 
+        # ĐỐI CHIẾU 9 TRƯỜNG DỮ LIỆU
         if b_dict and c_dict:
             if b_dict.get('Room') != c_dict.get('Room'): err += f"Lệch Phòng ({b_dict.get('Room')} vs {c_dict.get('Room')}); "
             if not is_same_guest(b_dict.get('Name', ''), c_dict.get('Name', '')): err += f"Lệch Tên ({b_dict.get('Name')} vs {c_dict.get('Name')}); "
             if b_dict.get('Key') != c_dict.get('Key') and "NOPASS_" not in b_dict.get('Key'): err += f"Lệch Hộ chiếu ({b_dict.get('Key')} vs {c_dict.get('Key')}); "
-            if b_dict.get('DOB') != c_dict.get('DOB'): err += f"Lệch Ngày sinh ({format_date_vn(b_dict.get('DOB'))} vs {format_date_vn(c_dict.get('DOB'))}); "
+            if b_dict.get('DOB') != c_dict.get('DOB') and b_dict.get('DOB') and c_dict.get('DOB'): err += f"Lệch Ngày sinh ({format_date_vn(b_dict.get('DOB'))} vs {format_date_vn(c_dict.get('DOB'))}); "
             if b_dict.get('Gender') != c_dict.get('Gender') and b_dict.get('Gender') and c_dict.get('Gender'): err += f"Lệch Giới tính ({b_dict.get('Gender')} vs {c_dict.get('Gender')}); "
             if not match_nationality(b_dict.get('Nat'), c_dict.get('Nat')) and b_dict.get('Nat') and c_dict.get('Nat'): err += f"Lệch Quốc tịch ({b_dict.get('Nat')} vs {c_dict.get('Nat')}); "
-            if b_dict.get('In') != c_dict.get('In'): err += f"Lệch Ngày In ({format_date_vn(b_dict.get('In'))} vs {format_date_vn(c_dict.get('In'))}); "
-            if b_dict.get('Out') != c_dict.get('Out'): err += f"Lệch Ngày Out ({format_date_vn(b_dict.get('Out'))} vs {format_date_vn(c_dict.get('Out'))}); "
+            if b_dict.get('In') != c_dict.get('In') and b_dict.get('In') and c_dict.get('In'): err += f"Lệch Ngày In ({format_date_vn(b_dict.get('In'))} vs {format_date_vn(c_dict.get('In'))}); "
+            if b_dict.get('Out') != c_dict.get('Out') and b_dict.get('Out') and c_dict.get('Out'): err += f"Lệch Ngày Out ({format_date_vn(b_dict.get('Out'))} vs {format_date_vn(c_dict.get('Out'))}); "
             v_b, v_c = parse_date(b_dict.get('Visa')), parse_date(c_dict.get('Visa'))
             if v_b != v_c and v_b and v_c: err += f"Lệch Hạn Visa ({format_date_vn(v_b)} vs {format_date_vn(v_c)}); "
 
