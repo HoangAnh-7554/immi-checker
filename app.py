@@ -229,10 +229,14 @@ def process_data(check_date, files_dict):
                 elif out_s and not pd.isna(out_s) and out_s > check_dt: is_stay = True
 
         visa_dt = parse_universal_date(pVisa, is_opera=False)
+        is_visa_expired = False
         if visa_dt:
             days_left = (visa_dt - check_dt).days
-            if days_left < 0: note += " | [VISA HẾT HẠN]"
-            elif days_left <= 7: note += f" | [Visa còn {days_left} ngày]"
+            if days_left < 0:
+                is_visa_expired = True
+                err += f"Khách đã hết hạn Visa từ {format_date_vn(visa_dt)}; "
+            elif days_left <= 7: 
+                note += f" | [Visa còn {days_left} ngày]"
 
         base_dict, comp_dict, n_base, n_comp = None, None, "", ""
         if has_chieu and in_kc and in_gc:
@@ -255,18 +259,25 @@ def process_data(check_date, files_dict):
         if not pRoom or pRoom == "0" or pRoom.upper() == "PM": 
             loai_loi, err = "Trống Số Phòng", err + "Chưa gán phòng; "
 
-        # LOGIC MỚI: Ép bắt lỗi tuyệt đối nếu có trên Opera/Police mà vắng bóng trên Web
-        if err: 
-            loai_loi = loai_loi or "Lệch Dữ Liệu"
+        # LOGIC ĐÃ ĐƯỢC TỐI ƯU HÓA: Mọi sai lệch sẽ mang tên "Lưu ý" nhẹ nhàng
+        if is_visa_expired:
+            loai_loi = "Visa Hết Hạn"
+        elif err: 
+            loai_loi = "Lưu ý" # Thay thế hoàn toàn cụm từ "Lệch Dữ Liệu"
         else:
+            missing_c, missing_s = "", ""
+            has_sang = not dfs['kblt_sang'].empty or not dfs['gihf_sang'].empty
+            
+            # Quét độc lập ca Chiều và Sáng, không sót bất kỳ ai
             if has_chieu:
-                if (in_gc or in_pc) and not in_kc:
-                    loai_loi = "Thiếu KBLT (Chiều)"
-                elif in_kc and not in_gc and out_c and not pd.isna(out_c) and out_c > check_dt:
-                    loai_loi = "Thiếu Opera (Chiều)"
-            else:
-                if (in_gs or in_ps) and not in_ks:
-                    loai_loi = "Thiếu KBLT (Sáng)"
+                if (in_gc or in_pc) and not in_kc: missing_c = "Thiếu KBLT (Chiều)"
+                elif in_kc and not in_gc: missing_c = "Thiếu Opera (Chiều)"
+            
+            if has_sang:
+                if (in_gs or in_ps) and not in_ks: missing_s = "Thiếu KBLT (Sáng)"
+                elif in_ks and not in_gs: missing_s = "Thiếu Opera (Sáng)"
+            
+            loai_loi = missing_c or missing_s
 
         if note.startswith(" | "): note = note[3:]
 
@@ -279,7 +290,7 @@ def process_data(check_date, files_dict):
             'Ngày Out': format_date_vn(pOut),
             'Hạn Visa': format_date_vn(visa_dt) if visa_dt else "",
             'Trạng Thái/Ghi Chú': note.strip(), 
-            'Chi Tiết Lỗi': err,
+            'Chi Tiết': err, # Sửa tên cột "Chi Tiết Lỗi" thành "Chi Tiết"
             'Hồ Sơ': ""
         }
 
@@ -288,6 +299,12 @@ def process_data(check_date, files_dict):
         elif is_stay: rep_stay.append(row_data)
 
     return pd.DataFrame(rep_loi), pd.DataFrame(rep_stay), pd.DataFrame(rep_due)
+
+def sort_rooms(df):
+    if df.empty: return df
+    df['Room_Num'] = df['Phòng'].astype(str).str.extract(r'(\d+)').astype(float)
+    df = df.sort_values(by=['Room_Num', 'Phòng'])
+    return df.drop(columns=['Room_Num'])
 
 # ==========================================
 # 3. GIAO DIỆN STREAMLIT (UI)
@@ -315,14 +332,6 @@ with col2:
 
 st.markdown("---")
 
-def sort_rooms(df):
-    """Hàm hỗ trợ sắp xếp phòng theo đúng thứ tự Toán học"""
-    if df.empty: return df
-    # Chuyển đổi cột Phòng sang dạng số để sort, những phòng lỗi (không phải số) sẽ bị ép thành NaN và đẩy xuống cuối
-    df['Room_Num'] = pd.to_numeric(df['Phòng'], errors='coerce')
-    df = df.sort_values(by=['Room_Num', 'Phòng'])
-    return df.drop(columns=['Room_Num'])
-
 if st.button("🚀 CHẠY KIỂM TRA ĐỐI CHIẾU", use_container_width=True):
     files = {
         'kblt_sang': f_kblt_sang, 'gihf_sang': f_gihf_sang, 'pol_sang': f_pol_sang,
@@ -334,12 +343,13 @@ if st.button("🚀 CHẠY KIỂM TRA ĐỐI CHIẾU", use_container_width=True):
     else:
         df_loi, df_stay, df_due = process_data(check_date, files)
         
-        # Sắp xếp Số phòng từ nhỏ đến lớn chuẩn xác
-        df_loi = sort_rooms(df_loi)[['Phân Loại', 'Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Chi Tiết Lỗi', 'Hồ Sơ']] if not df_loi.empty else df_loi
+        # Sắp xếp Số phòng từ nhỏ đến lớn
+        df_loi = sort_rooms(df_loi)[['Phân Loại', 'Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Chi Tiết', 'Hồ Sơ']] if not df_loi.empty else df_loi
         df_stay = sort_rooms(df_stay)[['Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Hạn Visa', 'Trạng Thái/Ghi Chú', 'Hồ Sơ']] if not df_stay.empty else df_stay
         df_due = sort_rooms(df_due)[['Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Hạn Visa', 'Trạng Thái/Ghi Chú', 'Hồ Sơ']] if not df_due.empty else df_due
 
-        tab1, tab2, tab3 = st.tabs(["🚨 Lỗi Dữ Liệu", "🛏️ Stayover", "🚪 Due Out"])
+        # Đổi tên Bảng 1 thành "Lưu Ý"
+        tab1, tab2, tab3 = st.tabs(["📌 Lưu Ý", "🛏️ Stayover", "🚪 Due Out"])
         
         with tab1: st.dataframe(df_loi, use_container_width=True)
         with tab2: st.dataframe(df_stay, use_container_width=True)
@@ -347,7 +357,7 @@ if st.button("🚀 CHẠY KIỂM TRA ĐỐI CHIẾU", use_container_width=True):
             
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df_loi.to_excel(writer, sheet_name='Loi_DuLieu', index=False)
+            df_loi.to_excel(writer, sheet_name='Luu_Y', index=False)
             df_stay.to_excel(writer, sheet_name='Stayover', index=False)
             df_due.to_excel(writer, sheet_name='Due Out', index=False)
         
