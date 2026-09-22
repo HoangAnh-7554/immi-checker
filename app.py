@@ -35,7 +35,6 @@ def std_gender(g):
 def get_iso3(val):
     if not val or pd.isna(val): return ""
     val = str(val).strip().upper()
-    
     vn_map = {
         'VIỆT NAM': 'VNM', 'VN': 'VNM', 'ĐÀI LOAN': 'TWN', 'TW': 'TWN', 
         'TRUNG QUỐC': 'CHN', 'CN': 'CHN', 'CH HÀN': 'KOR', 'HÀN QUỐC': 'KOR', 
@@ -80,11 +79,9 @@ def get_iso3(val):
         'KE': 'KEN', 'TANZANIA': 'TZA', 'TZ': 'TZA', 'GHANA': 'GHA', 
         'GH': 'GHA', 'ZAIRE': 'COD', 'ZR': 'COD'
     }
-    
     if val in vn_map: return vn_map[val]
     for vn_name, iso3 in vn_map.items():
         if vn_name in val: return iso3
-        
     try: return pycountry.countries.lookup(val).alpha_3
     except LookupError: return val
 
@@ -92,16 +89,9 @@ def match_nationality(nat1, nat2):
     if not nat1 or not nat2: return False
     n1, n2 = str(nat1).strip().upper(), str(nat2).strip().upper()
     if n1 == n2: return True
-    
-    iso1 = get_iso3(n1)
-    iso2 = get_iso3(n2)
-    
+    iso1, iso2 = get_iso3(n1), get_iso3(n2)
     if iso1 == iso2: return True
-    
-    # LUẬT NGOẠI LỆ: KBLT khai báo Hồng Kông (HKG) hoặc Ma Cao (MAC) là Trung Quốc (CHN)
-    if {iso1, iso2}.issubset({'CHN', 'HKG'}) or {iso1, iso2}.issubset({'CHN', 'MAC'}):
-        return True
-        
+    if {iso1, iso2}.issubset({'CHN', 'HKG'}) or {iso1, iso2}.issubset({'CHN', 'MAC'}): return True
     return False
 
 def parse_date(val, is_dob=False, is_opera=False):
@@ -117,7 +107,6 @@ def parse_date(val, is_dob=False, is_opera=False):
         except:
             try: return datetime.strptime(val_str, '%d-%b-%Y').replace(tzinfo=None)
             except: pass
-    
     match = re.search(r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b', val_str)
     if match:
         d, m, y = int(match.group(1)), int(match.group(2)), int(match.group(3))
@@ -197,10 +186,8 @@ def process_data(check_date, files_dict):
                 name = str(r.get('Họ tên', '')).strip()
                 passp = str(r.get('Số hộ chiếu', '')).strip().upper()
                 if not passp or passp == 'NAN': passp = f"NOPASS_{room}_{name[:5]}"
-                
                 din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
                 if 'kblt' in source_label: din, dout = parse_date(din), parse_date(dout)
-                
                 records.append({
                     'Key': passp, 'Room': room, 'Name': name, 
                     'DOB': r.get('Ngày sinh'), 'Gender': r.get('Giới tính', ''), 'Nat': r.get('Quốc tịch', ''),
@@ -236,6 +223,9 @@ def process_data(check_date, files_dict):
         out_s = srcs['kblt_sang']['Out'] if in_ks and pd.notna(srcs['kblt_sang'].get('Out')) else (srcs['gihf_sang']['Out'] if in_gs and pd.notna(srcs['gihf_sang'].get('Out')) else None)
         out_c = srcs['kblt_chieu']['Out'] if in_kc and pd.notna(srcs['kblt_chieu'].get('Out')) else (srcs['gihf_chieu']['Out'] if in_gc and pd.notna(srcs['gihf_chieu'].get('Out')) else None)
         
+        # Chốt Ngày Out chuẩn nhất để so sánh Hạn Visa
+        chot_out_date = out_c if pd.notna(out_c) else (out_s if pd.notna(out_s) else pOut)
+        
         is_due, is_stay, note, err, loai_loi = False, False, "", "", ""
         
         if has_chieu:
@@ -262,12 +252,24 @@ def process_data(check_date, files_dict):
                 if out_s == check_dt: is_due, note = True, "Dự kiến Due Out"
                 elif out_s and pd.notna(out_s) and out_s > check_dt: is_stay = True
 
+        # LOGIC CẢNH BÁO VISA CHUYÊN SÂU
         visa_dt = parse_date(pVisa)
-        is_visa_expired = False
+        is_visa_expired_now = False
         if visa_dt:
-            days_left = (visa_dt - check_dt).days
-            if days_left < 0: is_visa_expired, err = True, err + f"Khách đã hết hạn Visa từ {format_date_vn(visa_dt)}; "
-            elif days_left <= 7: note += f" | [Visa còn {days_left} ngày]"
+            days_to_check = (visa_dt - check_dt).days
+            
+            # 1. Hết hạn so với ngày hôm nay -> Lỗi nghiêm trọng, văng sang bảng Lưu Ý
+            if days_to_check < 0: 
+                is_visa_expired_now = True
+                err += f"Khách đã hết hạn Visa từ {format_date_vn(visa_dt)}; "
+            
+            # 2. Vẫn còn hạn hôm nay, nhưng sẽ hết hạn trước khi khách Check-out -> Cảnh báo ĐỎ ở Stayover
+            elif chot_out_date and pd.notna(chot_out_date) and visa_dt < chot_out_date:
+                note += f" | 🚨 [CẢNH BÁO] Visa ({format_date_vn(visa_dt)}) HẾT HẠN trước Ngày Out!"
+            
+            # 3. Còn hạn, nằm trong ngưỡng 7 ngày tới -> Nhắc nhở VÀNG ở Stayover
+            elif days_to_check <= 7: 
+                note += f" | ⚠️ [LƯU Ý] Visa sắp hết hạn ({format_date_vn(visa_dt)}) - Còn {days_to_check} ngày."
 
         b_dict, c_dict, n_b, n_c = None, None, "", ""
         if has_chieu and in_kc and in_gc: b_dict, c_dict, n_b, n_c = srcs['kblt_chieu'], srcs['gihf_chieu'], "Web", "Opera"
@@ -289,7 +291,8 @@ def process_data(check_date, files_dict):
         if 'NOPASS_' in pPass: loai_loi, err = "Thiếu Passport", "Chưa nhập số Passport; "
         if not pRoom or pRoom == "0" or pRoom.upper() == "PM": loai_loi, err = "Trống Số Phòng", err + "Chưa gán phòng; "
 
-        if is_visa_expired: loai_loi = "Visa Hết Hạn"
+        # CHỐT PHÂN LOẠI
+        if is_visa_expired_now: loai_loi = "Visa Hết Hạn"
         elif err: loai_loi = "Lưu ý"
         else:
             has_sang = not dfs['kblt_sang'].empty or not dfs['gihf_sang'].empty
@@ -346,6 +349,11 @@ with col2:
 
 st.markdown("---")
 
+def color_warning(val):
+    if isinstance(val, str) and "[CẢNH BÁO]" in val: return 'color: red; font-weight: bold'
+    if isinstance(val, str) and "[LƯU Ý]" in val: return 'color: orange; font-weight: bold'
+    return ''
+
 if st.button("🚀 CHẠY KIỂM TRA ĐỐI CHIẾU", use_container_width=True):
     files = {'kblt_sang': fk_s, 'gihf_sang': fg_s, 'pol_sang': fp_s, 'kblt_chieu': fk_c, 'gihf_chieu': fg_c, 'pol_chieu': fp_c}
     
@@ -361,7 +369,7 @@ if st.button("🚀 CHẠY KIỂM TRA ĐỐI CHIẾU", use_container_width=True):
 
         tab1, tab2, tab3 = st.tabs(["📌 Lưu Ý", "🛏️ Stayover", "🚪 Due Out"])
         with tab1: st.dataframe(df_loi, use_container_width=True)
-        with tab2: st.dataframe(df_stay, use_container_width=True)
+        with tab2: st.dataframe(df_stay.style.map(color_warning, subset=['Trạng Thái/Ghi Chú']), use_container_width=True)
         with tab3: st.dataframe(df_due, use_container_width=True)
             
         buffer = io.BytesIO()
