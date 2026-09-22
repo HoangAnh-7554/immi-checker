@@ -107,7 +107,6 @@ VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 # ==========================================
 
 def get_src_name(s_key):
-    """Đổi tên nhãn nguồn dữ liệu cho dễ nhìn"""
     s_lower = s_key.lower()
     if 'kblt' in s_lower: return 'KBLT'
     if 'gihf' in s_lower: return 'Opera'
@@ -115,7 +114,6 @@ def get_src_name(s_key):
     return s_key
 
 def get_srcs_str(s_keys):
-    """Gộp chung các nguồn trùng nhau (VD: KBLT+Opera)"""
     return '+'.join(dict.fromkeys(get_src_name(s) for s in s_keys))
 
 def safe_str(val):
@@ -190,13 +188,14 @@ def is_dob_match(d1, d2):
     return False
 
 def parse_date(val, is_dob=False):
+    # [FIX CỐT LÕI]: Triệt tiêu giờ/phút/giây từ tất cả các file để so sánh chính xác mốc 00:00:00
     if pd.isna(val) or val is None: return None
     val_str = str(val).strip()
     if val_str.lower() in ["nan", "nat", "none", ""]: return None
     
-    if isinstance(val, datetime): return val.replace(tzinfo=None)
+    if isinstance(val, datetime): return val.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
     if hasattr(val, 'to_pydatetime'):
-        try: return val.to_pydatetime().replace(tzinfo=None)
+        try: return val.to_pydatetime().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         except: pass
         
     try: return datetime.strptime(val_str.upper(), '%d-%b-%y').replace(tzinfo=None)
@@ -287,10 +286,11 @@ def process_data(check_date, files_dict):
                 din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
                 visa = r.get('Thời hạn được phép tạm trú tại Việt Nam', None)
                 
+                # Mọi dữ liệu đi vào mảng phải trải qua dịch ngày tháng
                 all_guests.append({
                     'Key': passp, 'Room': room, 'Name': name, 'DOB': r.get('Ngày sinh'), 
                     'Gender': r.get('Giới tính'), 'Nat': r.get('Quốc tịch'),
-                    'In': din, 'Out': dout, 'Visa': visa, 'Src': source_label
+                    'In': parse_date(din), 'Out': parse_date(dout), 'Visa': parse_date(visa) if 'kblt' in source_label else visa, 'Src': source_label
                 })
 
     master_dict = {}
@@ -322,12 +322,22 @@ def process_data(check_date, files_dict):
         base_src = next((srcs[s] for s in ['kblt_chieu', 'gihf_chieu', 'kblt_sang', 'gihf_sang', 'pol_chieu', 'pol_sang'] if s in srcs), None)
         if not base_src: continue
 
-        # [BẢN VÁ LỖI UNBOUND LOCAL ERROR] Kéo biến này ra ngoài cùng
         is_vietnamese = any(get_iso3(srcs[s]['Nat']) == 'VNM' for s in srcs if srcs[s]['Nat'])
 
-        pRoom, pName = data['Room'], base_src['Name']
+        # Xác định mốc Ngày Out theo Ca Trước và Ca Hiện tại
+        outs_truoc = [srcs[s]['Out'] for s in ['kblt_sang', 'gihf_sang', 'pol_sang'] if s in srcs and pd.notna(srcs[s].get('Out')) and not isinstance(srcs[s]['Out'], str)]
+        out_s = max(outs_truoc) if outs_truoc else None
+
+        outs_hien_tai = [srcs[s]['Out'] for s in ['kblt_chieu', 'gihf_chieu', 'pol_chieu'] if s in srcs and pd.notna(srcs[s].get('Out')) and not isinstance(srcs[s]['Out'], str)]
+        out_c = max(outs_hien_tai) if outs_hien_tai else None
+        
         all_outs = [srcs[s]['Out'] for s in srcs if pd.notna(srcs[s].get('Out')) and not isinstance(srcs[s]['Out'], str)]
         chot_out_date = max(all_outs) if all_outs else None
+        
+        in_kc, in_gc, in_pc = 'kblt_chieu' in srcs, 'gihf_chieu' in srcs, 'pol_chieu' in srcs
+        in_ks, in_gs, in_ps = 'kblt_sang' in srcs, 'gihf_sang' in srcs, 'pol_sang' in srcs
+
+        pRoom, pName, pIn = data['Room'], base_src['Name'], base_src.get('In')
         
         err = ""
         
@@ -443,18 +453,42 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(visa_srcs[d])}: {format_date_vn(d)}" for d in visas])
             err += f"Lệch Hạn Visa ({diff}); "
 
+        # [BẢN VÁ LOGIC CỐT LÕI] - Khôi phục trạng thái Extend, Shorten, Checked-Out theo Ca Trước vs Ca Hiện Tại
         is_due, is_stay, note, loai_loi = False, False, "", ""
         if has_ca_hien_tai:
-            if base_src.get('In') == check_dt:
-                if chot_out_date == check_dt: is_due, note = True, "[Day-use] Khách in/out trong ngày"
-                else: is_stay, note = True, "Khách mới Check-in"
-            else:
-                if chot_out_date == check_dt: is_due, note = True, "Dự kiến Due Out (Chú ý Check-out trên KBLT)"
-                elif chot_out_date and chot_out_date > check_dt: is_stay = True
+            if pIn == check_dt or in_pc:
+                if (in_kc and out_c == check_dt) or (not in_kc and not in_gc and out_s == check_dt): 
+                    is_due, note = True, "[Day-use] Khách in/out trong ngày"
+                else: 
+                    is_stay, note = True, "Khách mới Check-in" if not pIn or pIn >= check_dt else "Khách Check-in hôm qua"
+            if in_ks or in_gs:
+                if out_s == check_dt:
+                    if not in_kc and not in_gc: 
+                        is_due, note = True, "Đã Checked-out hoàn toàn"
+                    elif out_c and out_c > check_dt: 
+                        is_stay, note = True, f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
+                    else: 
+                        is_due, note = True, "Chưa Checked-out (KBLT)"
+                elif out_s and out_s > check_dt:
+                    if not in_kc and not in_gc: 
+                        is_due, note = True, "[Shorten] Trả phòng sớm"
+                    else:
+                        is_stay = True
+                        if out_c and out_c > out_s: 
+                            note = f"[Extend] Gia hạn thêm đến {format_date_vn(out_c)}"
+                        elif out_c and out_c < out_s and out_c == check_dt: 
+                            is_stay, is_due, note = False, True, "[Shorten] Trả phòng sớm"
+            if not any([in_ks, in_gs, in_ps, in_pc]) and not (pIn == check_dt):
+                 if out_c == check_dt: is_due = True 
+                 else: is_stay = True
         else:
-            if base_src.get('In') == check_dt: is_stay, note = True, "Khách mới Check-in"
-            elif chot_out_date == check_dt: is_due, note = True, "Dự kiến Due Out"
-            else: is_stay = True
+            if pIn == check_dt or in_ps: 
+                is_stay, note = True, "Khách Check-in hôm qua" if pIn and pIn < check_dt else "Khách mới Check-in"
+            if in_ks or in_gs:
+                if out_s == check_dt: 
+                    is_due, note = True, "Dự kiến Due Out"
+                elif out_s and out_s > check_dt: 
+                    is_stay = True
 
         pVisa = None
         for v in visas:
@@ -533,7 +567,7 @@ def process_data(check_date, files_dict):
             'Ngày sinh': format_date_vn(base_src['DOB']), 
             'Giới tính': base_src['Gender'], 
             'Quốc tịch': base_src['Nat'],
-            'Ngày In': format_date_vn(base_src.get('In')), 
+            'Ngày In': format_date_vn(pIn), 
             'Ngày Out': format_date_vn(chot_out_date),
             'Hạn Visa': format_date_vn(pVisa),
             'Trạng Thái/Ghi Chú': note.strip(), 
