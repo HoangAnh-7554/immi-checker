@@ -33,32 +33,28 @@ def std_gender(g):
     return g
 
 def get_iso3(val):
-    """Bộ Não phiên dịch Quốc tịch: Dịch mọi mã và tên về chuẩn 3 chữ cái ISO"""
+    """Bộ Não phiên dịch Quốc tịch: Dịch mọi mã, tên Tiếng Việt/Anh về chuẩn 3 chữ cái ISO"""
     if not val or pd.isna(val): return ""
     val = str(val).strip().upper()
     
-    # 1. Dùng thư viện Quốc tế pycountry
-    try: return pycountry.countries.lookup(val).alpha_3
-    except LookupError: pass
-        
-    # 2. Dùng từ điển nội bộ (Được tối ưu từ KBLT và Bảng mã Opera Vũng Tàu)
     vn_map = {
         'VIỆT NAM': 'VNM', 'VN': 'VNM', 'ĐÀI LOAN': 'TWN', 'TW': 'TWN', 
         'TRUNG QUỐC': 'CHN', 'CN': 'CHN', 'CH HÀN': 'KOR', 'HÀN QUỐC': 'KOR', 
         'KR': 'KOR', 'NHẬT BẢN': 'JPN', 'JP': 'JPN', 'HOA KỲ': 'USA', 
         'MỸ': 'USA', 'US': 'USA', 'VƯƠNG QUỐC ANH': 'GBR', 'ANH': 'GBR', 
-        'GB': 'GBR', 'UK': 'GBR', 'ÚC': 'AUS', 'Ô-XTRÂY-LI-A': 'AUS', 
+        'GB': 'GBR', 'UK': 'GBR', 'ÚC': 'AUS', 'Ô-XTRÂY-LI-A': 'AUS', 'Ô-XTRÂY': 'AUS',
         'AU': 'AUS', 'HÀ LAN': 'NLD', 'NL': 'NLD', 'PHÁP': 'FRA', 
         'FR': 'FRA', 'FX': 'FRA', 'ĐỨC': 'DEU', 'DE': 'DEU', 'NGA': 'RUS', 
         'RU': 'RUS', 'RQ': 'RUS', 'THÁI LAN': 'THA', 'TH': 'THA', 
-        'MALAYSIA': 'MYS', 'MA-LA-XI-A': 'MYS', 'MY': 'MYS', 'SINGAPORE': 'SGP', 
-        'XIN-GA-PO': 'SGP', 'SG': 'SGP', 'INDONESIA': 'IDN', 'IN-ĐÔ-NÊ': 'IDN', 
-        'ID': 'IDN', 'PHILIPPINES': 'PHL', 'PH': 'PHL', 'ẤN ĐỘ': 'IND', 
-        'IN': 'IND', 'CANADA': 'CAN', 'CA-NA-DA': 'CAN', 'CA': 'CAN', 
+        'MALAYSIA': 'MYS', 'MA-LAI-XI-A': 'MYS', 'MA-LAI': 'MYS', 'MY': 'MYS', 
+        'SINGAPORE': 'SGP', 'XIN-GA-PO': 'SGP', 'XIN-GA': 'SGP', 'SG': 'SGP', 
+        'INDONESIA': 'IDN', 'IN-ĐÔ-NÊ-XI-A': 'IDN', 'IN-ĐÔ-NÊ': 'IDN', 'ID': 'IDN', 
+        'PHILIPPINES': 'PHL', 'PH': 'PHL', 'ẤN ĐỘ': 'IND', 'IN': 'IND', 
+        'CANADA': 'CAN', 'CA-NA-DA': 'CAN', 'CA': 'CAN', 
         'MEXICO': 'MEX', 'MÊ-XI-CÔ': 'MEX', 'MX': 'MEX', 'NAM PHI': 'ZAF', 
-        'ZA': 'ZAF', 'HỒNG KÔNG': 'HKG', 'HK': 'HKG', 'THỔ NHĨ': 'TUR', 
-        'TR': 'TUR', 'NA UY': 'NOR', 'NO': 'NOR', 'BA LAN': 'POL', 
-        'PL': 'POL', 'ARGENTINA': 'ARG', 'ÁC-HEN-TI-NA': 'ARG', 'AR': 'ARG', 
+        'ZA': 'ZAF', 'HỒNG KÔNG': 'HKG', 'HK': 'HKG', 'THỔ NHĨ KỲ': 'TUR', 'THỔ NHĨ': 'TUR',
+        'TR': 'TUR', 'NA UY': 'NOR', 'VƯƠNG QUỐC NA-UY': 'NOR', 'NO': 'NOR', 'BA LAN': 'POL', 
+        'PL': 'POL', 'ARGENTINA': 'ARG', 'ÁC-HEN-TI-NA': 'ARG', 'AC-HEN-TI-NA': 'ARG', 'AR': 'ARG', 
         'BRAZIL': 'BRA', 'BR': 'BRA', 'TÂY BAN NHA': 'ESP', 'ES': 'ESP', 
         'BỒ ĐÀO NHA': 'PRT', 'PT': 'PRT', 'Ý': 'ITA', 'ITALIA': 'ITA', 
         'IT': 'ITA', 'THỤY SĨ': 'CHE', 'CH': 'CHE', 'THỤY ĐIỂN': 'SWE', 
@@ -85,9 +81,13 @@ def get_iso3(val):
         'KE': 'KEN', 'TANZANIA': 'TZA', 'TZ': 'TZA', 'GHANA': 'GHA', 
         'GH': 'GHA', 'ZAIRE': 'COD', 'ZR': 'COD'
     }
+    
+    if val in vn_map: return vn_map[val]
     for vn_name, iso3 in vn_map.items():
-        if vn_name in val or val in vn_name: return iso3
-    return val
+        if vn_name in val: return iso3
+        
+    try: return pycountry.countries.lookup(val).alpha_3
+    except LookupError: return val
 
 def match_nationality(nat1, nat2):
     if not nat1 or not nat2: return False
@@ -265,7 +265,7 @@ def process_data(check_date, files_dict):
         elif not has_chieu and in_ks and in_gs: b_dict, c_dict, n_b, n_c = srcs['kblt_sang'], srcs['gihf_sang'], "Web", "Opera"
         elif not has_chieu and in_ks and in_ps: b_dict, c_dict, n_b, n_c = srcs['kblt_sang'], srcs['pol_sang'], "Web", "Police"
 
-        # ĐỐI CHIẾU 9 TRƯỜNG DỮ LIỆU
+        # ĐỐI CHIẾU 9 TRƯỜNG DỮ LIỆU CHÍNH XÁC
         if b_dict and c_dict:
             if b_dict.get('Room') != c_dict.get('Room'): err += f"Lệch Phòng ({b_dict.get('Room')} vs {c_dict.get('Room')}); "
             if not is_same_guest(b_dict.get('Name', ''), c_dict.get('Name', '')): err += f"Lệch Tên ({b_dict.get('Name')} vs {c_dict.get('Name')}); "
