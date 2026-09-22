@@ -60,7 +60,7 @@ def get_iso3(val):
         'FI': 'FIN', 'ÁO': 'AUT', 'AT': 'AUT', 'BỈ': 'BEL', 'BE': 'BEL', 
         'HY LẠP': 'GRC', 'GR': 'GRC', 'IRELAND': 'IRL', 'AI LÊN': 'IRL', 
         'IE': 'IRL', 'NEW ZEALAND': 'NZL', 'NƯU TÂY LAN': 'NZL', 'NZ': 'NZL', 
-        'CAMPUCHIA': 'KHM', 'KH': 'KHM', 'LÀO': 'LAO', 'LA': 'LAO', 
+        'CAMPUCHIA': 'KHM', 'CĂM-PU-CHIA': 'KHM', 'CĂM PU CHIA': 'KHM', 'KH': 'KHM', 'LÀO': 'LAO', 'LA': 'LAO', 
         'MYANMAR': 'MMR', 'MM': 'MMR', 'MACAU': 'MAC', 'MA CAO': 'MAC', 
         'MO': 'MAC', 'TRIỀU TIÊN': 'PRK', 'KP': 'PRK', 'CUBA': 'CUB', 
         'CU BA': 'CUB', 'CU': 'CUB', 'COLOMBIA': 'COL', 'CÔ-LÔM-BI-A': 'COL', 
@@ -171,7 +171,7 @@ def parse_xml(file, is_police=False):
         return pd.DataFrame()
 
 # ==========================================
-# 3. ĐỐI CHIẾU DỮ LIỆU
+# 3. ĐỐI CHIẾU 9 TRƯỜNG DỮ LIỆU
 # ==========================================
 def process_data(check_date, files_dict):
     st.info("Đang tiến hành soi chiếu 9 trường dữ liệu...")
@@ -226,11 +226,7 @@ def process_data(check_date, files_dict):
         out_s = srcs['kblt_sang']['Out'] if in_ks and pd.notna(srcs['kblt_sang'].get('Out')) else (srcs['gihf_sang']['Out'] if in_gs and pd.notna(srcs['gihf_sang'].get('Out')) else None)
         out_c = srcs['kblt_chieu']['Out'] if in_kc and pd.notna(srcs['kblt_chieu'].get('Out')) else (srcs['gihf_chieu']['Out'] if in_gc and pd.notna(srcs['gihf_chieu'].get('Out')) else None)
         
-        # BƯỚC ĐỘT PHÁ TÌM RA NGÀY OUT MUỘN NHẤT ĐỂ SO SÁNH VISA
-        all_outs = []
-        for s in ['kblt_chieu', 'gihf_chieu', 'pol_chieu', 'kblt_sang', 'gihf_sang', 'pol_sang']:
-            if s in srcs and pd.notna(srcs[s].get('Out')):
-                all_outs.append(srcs[s]['Out'])
+        all_outs = [d for d in [out_c, out_s, pOut] if pd.notna(d)]
         chot_out_date = max(all_outs) if all_outs else None
         
         is_due, is_stay, note, err, loai_loi = False, False, "", "", ""
@@ -259,21 +255,19 @@ def process_data(check_date, files_dict):
                 if out_s == check_dt: is_due, note = True, "Dự kiến Due Out"
                 elif out_s and pd.notna(out_s) and out_s > check_dt: is_stay = True
 
-        # LOGIC CẢNH BÁO VISA - ĐẨY THẲNG VÀO BẢNG LƯU Ý
-        visa_dt = parse_date(pVisa)
         is_visa_expired_now = False
-        if pd.notna(visa_dt):
-            days_to_check = (visa_dt - check_dt).days
+        if pd.notna(pVisa):
+            days_to_check = (pVisa - check_dt).days
             if days_to_check < 0: 
                 is_visa_expired_now = True
-                err += f"Khách đã hết hạn Visa từ {format_date_vn(visa_dt)}; "
-            elif chot_out_date and pd.notna(chot_out_date) and visa_dt < chot_out_date:
-                msg = f"Visa ({format_date_vn(visa_dt)}) HẾT HẠN trước Ngày Out ({format_date_vn(chot_out_date)})!"
-                note += f" | 🚨 [CẢNH BÁO] {msg}"
+                err += f"Khách đã hết hạn Visa từ {format_date_vn(pVisa)}; "
+            elif chot_out_date and pd.notna(chot_out_date) and pVisa < chot_out_date:
+                msg = f"Visa ({format_date_vn(pVisa)}) HẾT HẠN trước Ngày Out ({format_date_vn(chot_out_date)})!"
+                note += f" | 🚨 [Cảnh Báo] {msg}"
                 err += f"[Cảnh Báo] {msg}; "
             elif days_to_check <= 7: 
-                msg = f"Visa sắp hết hạn ({format_date_vn(visa_dt)}) - Còn {days_to_check} ngày."
-                note += f" | ⚠️ [LƯU Ý] {msg}"
+                msg = f"Visa sắp hết hạn ({format_date_vn(pVisa)}) - Còn {days_to_check} ngày."
+                note += f" | ⚠️ [Sắp hết hạn] {msg}"
                 err += f"[Sắp hết hạn] {msg}; "
 
         b_dict, c_dict, n_b, n_c = None, None, "", ""
@@ -290,14 +284,12 @@ def process_data(check_date, files_dict):
             if not match_nationality(b_dict.get('Nat'), c_dict.get('Nat')) and b_dict.get('Nat') and c_dict.get('Nat'): err += f"Lệch Quốc tịch ({b_dict.get('Nat')} vs {c_dict.get('Nat')}); "
             if b_dict.get('In') != c_dict.get('In') and pd.notna(b_dict.get('In')) and pd.notna(c_dict.get('In')): err += f"Lệch Ngày In ({format_date_vn(b_dict.get('In'))} vs {format_date_vn(c_dict.get('In'))}); "
             if b_dict.get('Out') != c_dict.get('Out') and pd.notna(b_dict.get('Out')) and pd.notna(c_dict.get('Out')): err += f"Lệch Ngày Out ({format_date_vn(b_dict.get('Out'))} vs {format_date_vn(c_dict.get('Out'))}); "
-            v_b = b_dict.get('Visa') if pd.notna(b_dict.get('Visa')) else None
-            v_c = c_dict.get('Visa') if pd.notna(c_dict.get('Visa')) else None
-            if v_b != v_c and v_b and v_c: err += f"Lệch Hạn Visa ({format_date_vn(v_b)} vs {format_date_vn(v_c)}); "
+            v_b, v_c = b_dict.get('Visa'), c_dict.get('Visa')
+            if pd.notna(v_b) and pd.notna(v_c) and v_b != v_c: err += f"Lệch Hạn Visa ({format_date_vn(v_b)} vs {format_date_vn(v_c)}); "
 
         if 'NOPASS_' in pPass: loai_loi, err = "Thiếu Passport", "Chưa nhập số Passport; "
         if not pRoom or pRoom == "0" or pRoom.upper() == "PM": loai_loi, err = "Trống Số Phòng", err + "Chưa gán phòng; "
 
-        # CHỐT PHÂN LOẠI LỖI MỚI - GẮN THÊM CẢNH BÁO VISA
         if is_visa_expired_now: loai_loi = "Visa Hết Hạn"
         elif err: 
             if "[Cảnh Báo]" in err: loai_loi = "Cảnh Báo Visa"
