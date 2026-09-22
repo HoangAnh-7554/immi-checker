@@ -467,31 +467,37 @@ def process_data(check_date, files_dict):
 
         is_due, is_stay, note, loai_loi = False, False, "", ""
         
-        # [BẢN VÁ LỖI CỘT CHI TIẾT]: Bổ sung ghi chú File bị thiếu thay vì chỉ hiện tên lỗi
+        # [BẢN VÁ LỖI CỘT CHI TIẾT TƯỜNG MINH]: Lọc file chính xác, gọi tên cụ thể
+        current_srcs = [s for s in srcs if 'chieu' in s]
+        past_srcs = [s for s in srcs if 'sang' in s]
+        
         if has_ca_hien_tai:
             if 'gihf_chieu' in uploaded_files and 'gihf_chieu' not in srcs:
                 if chot_out_date and chot_out_date > check_dt: 
                     loai_loi = "Thiếu GIHF (Hiện tại)"
-                    err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên GIHF; "
+                    if current_srcs: err += f"Có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên GIHF; "
+                    else: err += f"Có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên GIHF (Hiện tại); "
             elif 'kblt_chieu' in uploaded_files and 'kblt_chieu' not in srcs:
                 if chot_out_date and chot_out_date > check_dt: 
                     loai_loi = "Thiếu KBLT (Hiện tại)"
-                    err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên KBLT; "
+                    if current_srcs: err += f"Có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên KBLT; "
+                    else: err += f"Có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên KBLT (Hiện tại); "
             elif not is_vietnamese and 'pol_chieu' in uploaded_files and 'pol_chieu' not in srcs:
                 if pIn == check_dt: 
                     loai_loi = "Thiếu Police (Hiện tại)"
-                    err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên Police; "
+                    if current_srcs: err += f"Có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên Police; "
+                    else: err += f"Có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên Police (Hiện tại); "
         elif has_ca_truoc:
             if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: 
                 loai_loi = "Thiếu GIHF (Ca trước)"
-                err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên GIHF; "
+                err += f"Có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên GIHF; "
             elif 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: 
                 loai_loi = "Thiếu KBLT (Ca trước)"
-                err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên KBLT; "
+                err += f"Có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên KBLT; "
             elif not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: 
                 if pIn and 0 <= (check_dt - pIn).days <= 1: 
                     loai_loi = "Thiếu Police (Ca trước)"
-                    err += f"Đã khai báo trên {get_srcs_str(list(srcs.keys()))} nhưng KHÔNG CÓ trên Police; "
+                    err += f"Có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên Police; "
 
         if has_ca_hien_tai:
             if pIn == check_dt or in_pc:
