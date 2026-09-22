@@ -98,7 +98,11 @@ VN_MAP = {
     'THỔ NHĨ KỲ': 'TUR', 'THỔ NHĨ': 'TUR', 'VƯƠNG QUỐC NA-UY': 'NOR', 'ÁC-HEN-TI-NA': 'ARG', 'AC-HEN-TI-NA': 'ARG', 
     'ITALIA': 'ITA', 'AI LÊN': 'IRL', 'NƯU TÂY LAN': 'NZL', 'CĂM-PU-CHIA': 'KHM', 'BĂNG-LA-ĐÉT': 'BGD', 'NÊ-PAN': 'NPL', 
     'PA-KÍT-XTAN': 'PAK', 'NI-GIÊ-RI-A': 'NGA', 'MA-RỐC': 'MAR', 'AN-GIÊ-RI': 'DZA', 'BÊ-LA-RÚT': 'BLR',
-    'CH LIÊN BANG ĐỨC': 'DEU', 'CỘNG HÒA LIÊN BANG ĐỨC': 'DEU', 'CỘNG HOÀ LIÊN BANG ĐỨC': 'DEU'
+    'CH LIÊN BANG ĐỨC': 'DEU', 'CỘNG HÒA LIÊN BANG ĐỨC': 'DEU', 'CỘNG HOÀ LIÊN BANG ĐỨC': 'DEU',
+    'NHẬT BẢN': 'JPN', 'MỸ': 'USA', 'FX': 'FRA', 'RQ': 'RUS', 'PHILIPPINES': 'PHL', 'CANADA': 'CAN', 'NA UY': 'NOR', 
+    'Ý': 'ITA', 'THỤY SĨ': 'CHE', 'PHẦN LAN': 'FIN', 'HY LẠP': 'GRC', 'IRELAND': 'IRL', 'MYANMAR': 'MMR', 'MA CAO': 'MAC', 
+    'TRIỀU TIÊN': 'PRK', 'CU BA': 'CUB', 'COLOMBIA': 'COL', 'CÔ-LÔM-BI-A': 'COL', 'CHI-LÊ': 'CHL', 'AI CẬP': 'EGY', 
+    'UAE': 'ARE', 'CÁC TIỂU VƯƠNG QUỐC': 'ARE', 'Ả RẬP XÊ ÚT': 'SAU', 'U-CRAI-NA': 'UKR', 'MARỐC': 'MAR', 'ZAIRE': 'COD', 'ZR': 'COD'
 }
 VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 
@@ -107,6 +111,7 @@ VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 # ==========================================
 
 def get_src_name(s_key):
+    """Đổi tên nhãn nguồn dữ liệu cho dễ nhìn"""
     s_lower = s_key.lower()
     if 'kblt' in s_lower: return 'KBLT'
     if 'gihf' in s_lower: return 'Opera'
@@ -114,6 +119,7 @@ def get_src_name(s_key):
     return s_key
 
 def get_srcs_str(s_keys):
+    """Gộp chung các nguồn trùng nhau (VD: KBLT+Opera)"""
     return '+'.join(dict.fromkeys(get_src_name(s) for s in s_keys))
 
 def safe_str(val):
@@ -320,15 +326,13 @@ def process_data(check_date, files_dict):
         base_src = next((srcs[s] for s in ['kblt_chieu', 'gihf_chieu', 'kblt_sang', 'gihf_sang', 'pol_chieu', 'pol_sang'] if s in srcs), None)
         if not base_src: continue
 
-        # Kéo biến is_vietnamese ra ngoài cùng để tránh UnboundLocalError
-        is_vietnamese = any(get_iso3(srcs[s]['Nat']) == 'VNM' for s in srcs if srcs[s]['Nat'])
-
         pRoom, pName = data['Room'], base_src['Name']
         all_outs = [srcs[s]['Out'] for s in srcs if pd.notna(srcs[s].get('Out')) and not isinstance(srcs[s]['Out'], str)]
         chot_out_date = max(all_outs) if all_outs else None
         
         err = ""
         
+        # 1. Quét biến động Số Phòng
         rooms = []
         room_srcs = {}
         for s in srcs:
@@ -344,6 +348,7 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(room_srcs[r])}: {r}" for r in rooms])
             err += f"Lệch/Đổi Phòng ({diff}); "
         
+        # 2. Quét Tên
         names = []
         name_srcs = {}
         for s in srcs:
@@ -359,6 +364,7 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(name_srcs[n])}: {n}" for n in names])
             err += f"Lệch Tên ({diff}); "
         
+        # 3. Quét Passport
         passes = []
         pass_srcs = {}
         for s in srcs:
@@ -372,6 +378,7 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(pass_srcs[p])}: {p}" for p in passes])
             err += f"Lệch Hộ chiếu ({diff}); "
             
+        # 4. Quét Quốc tịch
         nats = []
         nat_srcs = {}
         for s in srcs:
@@ -387,6 +394,7 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(nat_srcs[nt])}: {nt}" for nt in nats])
             err += f"Lệch Quốc tịch ({diff}); "
             
+        # 5. Quét Ngày sinh
         dobs = []
         dob_srcs = {}
         for s in srcs:
@@ -402,6 +410,7 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(dob_srcs[d])}: {format_date_vn(d)}" for d in dobs])
             err += f"Lệch Ngày sinh ({diff}); "
             
+        # 6. Quét Ngày In
         ins = []
         in_srcs = {}
         for s in srcs:
@@ -415,6 +424,7 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(in_srcs[d])}: {format_date_vn(d)}" for d in ins])
             err += f"Lệch Ngày In ({diff}); "
             
+        # 7. Quét Ngày Out
         outs = []
         out_srcs = {}
         for s in srcs:
@@ -428,6 +438,7 @@ def process_data(check_date, files_dict):
             diff = " vs ".join([f"{get_srcs_str(out_srcs[d])}: {format_date_vn(d)}" for d in outs])
             err += f"Biến động Ngày Out/Extend ({diff}); "
             
+        # 8. Quét Hạn Visa
         visas = []
         visa_srcs = {}
         for s in srcs:
@@ -490,6 +501,7 @@ def process_data(check_date, files_dict):
             if "[Cảnh Báo]" in err: loai_loi = "Cảnh Báo Visa"
             else: loai_loi = "Lưu ý"
         else:
+            is_vietnamese = any(get_iso3(srcs[s]['Nat']) == 'VNM' for s in srcs if srcs[s]['Nat'])
             if has_ca_hien_tai:
                 if 'gihf_chieu' in uploaded_files and 'gihf_chieu' not in srcs:
                     if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu Opera (Hiện tại)"
