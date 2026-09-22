@@ -31,7 +31,7 @@ VN_MAP = {
     'CHRISTMAS ISLND': 'CXR', 'CX': 'CXR', 'CLIPPERTON ISLA': 'IP', 'IP': 'IP', 'COCONUT ISLANDS': 'CCK', 'CC': 'CCK', 
     'COLUMBIA': 'COL', 'CO': 'COL', 'COMOROS': 'COM', 'KM': 'COM', 'COOK ISLANDS': 'COK', 'CK': 'COK', 
     'CORSICA': 'VP', 'VP': 'VP', 'COSTA RICA': 'CRI', 'CR': 'CRI', 'COTE D\'IVOIRE': 'CIV', 'CI': 'CIV', 
-    'CUBA': 'CUB', 'CU': 'CUB', 'CYPRUS': 'CYP', 'CY': 'CYP', 'CĂMPUCHIA': 'KHM', 'KH': 'KHM', 'CAMPUCHIA': 'KHM', 'CĂM PU CHIA': 'KHM',
+    'CUBA': 'CUB', 'CU': 'CUB', 'CYPRUS': 'CYP', 'CY': 'CYP', 'CĂMPUCHIA': 'KHM', 'KH': 'KHM', 'CAMPUCHIA': 'KHM', 'CĂM PU CHIA': 'KHM', 
     'DEM. REP. CONGO': 'COD', 'CD': 'COD', 'DJIBOUTI': 'DJI', 'DJ': 'DJI', 'DOMINICA': 'DMA', 'DM': 'DMA', 
     'DOMINICAN REP.': 'DOM', 'DO': 'DOM', 'DUTCH ANTILLES': 'AN', 'AN': 'AN', 'ĐAN MẠCH': 'DNK', 'DK': 'DNK', 
     'ĐÀI LOAN': 'TWN', 'TW': 'TWN', 'ĐỨC': 'DEU', 'DE': 'DEU', 'EAST TIMOR': 'TP', 'TL': 'TLS', 'ECUADOR': 'ECU', 
@@ -40,65 +40,74 @@ VN_MAP = {
     'EUROPEAN UNION': 'EU', 'EU': 'EU', 'FALKLAND ISLNDS': 'FLK', 'FK': 'FLK', 'FAROE ISLANDS': 'FRO', 'FO': 'FRO', 
     'FIJI': 'FJI', 'FJ': 'FJI', 'FINLAND': 'FIN', 'FI': 'FIN', 'FRANCE, METROPO': 'FX', 'FRENC.POLYNESIA': 'PYF', 
     'PF': 'PYF', 'FRENCH GUAYANA': 'GUF', 'GF': 'GUF', 'FRENCH S.TERRIT': 'ATF', 'TF': 'ATF', 'FRENCH SOUTHERN': 'FS', 
-    'GABON': 'GAB', 'GA': 'GAB', 'GAMBIA': 'GMB', 'GM': 'GMB', 'GAZA STRIP': 'GZ', 'GEORGIA': 'GEO', 'GE': 'GEO', 
-    'GHANA': 'GHA', 'GH': 'GHA', 'GIBRALTAR': 'GIB', 'GI': 'GIB', 'GLORIOSO ISLAND': 'GO', 'GREECE': 'GRC', 
-    'GR': 'GRC', 'GREENLAND': 'GRL', 'GL': 'GRL', 'GRENADA': 'GRD', 'GD': 'GRD', 'GUADELOUPE': 'GLP', 'GP': 'GLP', 
-    'GUAM': 'GUM', 'GU': 'GUM', 'GUATEMALA': 'GTM', 'GT': 'GTM', 'GUERNSEY': 'GGY', 'GK': 'GGY', 'GUINEA': 'GIN', 
-    'GN': 'GIN', 'GUINEA-BISSAU': 'GNB', 'GW': 'GNB', 'GUYANA': 'GUY', 'GY': 'GUY', 'HAITI': 'HTI', 'HT': 'HTI', 
-    'HEARD/MCDON.ISL': 'HMD', 'HM': 'HMD', 'HOA KỲ': 'USA', 'US': 'USA', 'HONDURAS': 'HND', 'HN': 'HND', 
-    'HONG KONG': 'HKG', 'HK': 'HKG', 'HOWLAND ISLAND': 'HQ', 'HUNG GA RI': 'HUN', 'HU': 'HUN', 'HÀ LAN': 'NLD', 
-    'NL': 'NLD', 'HÀN QUỐC': 'KOR', 'KR': 'KOR', 'I TA LI A': 'ITA', 'IT': 'ITA', 'ICELAND': 'ISL', 'IS': 'ISL', 
-    'INDONESIA': 'IDN', 'ID': 'IDN', 'IRAN': 'IRN', 'IR': 'IRN', 'IRAQ': 'IRQ', 'IQ': 'IRQ', 'ISLE OF MAN': 'IMN', 
-    'IM': 'IMN', 'ISRAEL': 'ISR', 'IL': 'ISR', 'JAMAICA': 'JAM', 'JM': 'JAM', 'JAN MAYEN': 'JN', 'JAPAN RYUKYU': 'JA', 
-    'JARVIS ISLAND': 'DQ', 'JERSEY': 'JEY', 'JE': 'JEY', 'JOHNSTON ATOLL': 'JQ', 'JORDAN': 'JOR', 'JO': 'JOR', 
-    'JUAN DE NOVA IS': 'JU', 'KAZAKHSTAN': 'KAZ', 'KZ': 'KAZ', 'KENYA': 'KEN', 'KE': 'KEN', 'KINGMAN REEF': 'KQ', 
-    'KIRIBATI': 'KIR', 'KI': 'KIR', 'KUWAIT': 'KWT', 'KW': 'KWT', 'KYRGYZSTAN': 'KGZ', 'KG': 'KGZ', 'LATVIA': 'LVA', 
-    'LV': 'LVA', 'LEBANON': 'LBN', 'LB': 'LBN', 'LESOTHO': 'LSO', 'LS': 'LSO', 'LIBERIA': 'LBR', 'LR': 'LBR', 
-    'LIBI': 'LBY', 'LY': 'LBY', 'LIECHTENSTEIN': 'LIE', 'LI': 'LIE', 'LITHUANIA': 'LTU', 'LT': 'LTU', 
-    'LUXEMBOURG': 'LUX', 'LU': 'LUX', 'LÀO': 'LAO', 'LA': 'LAO', 'MACAU': 'MAC', 'MO': 'MAC', 'MACEDONIA': 'MKD', 
-    'MK': 'MKD', 'MADAGASCAR': 'MDG', 'MG': 'MDG', 'MALAWI': 'MWI', 'MW': 'MWI', 'MALAYSIA': 'MYS', 'MY': 'MYS', 
-    'MALDIVES': 'MDV', 'MV': 'MDV', 'MALI': 'MLI', 'ML': 'MLI', 'MALTA': 'MLT', 'MT': 'MLT', 'MARSHALL ISLNDS': 'MHL', 
-    'MH': 'MHL', 'MARTINIQUE': 'MTQ', 'MQ': 'MTQ', 'MAURETANIA': 'MRT', 'MR': 'MRT', 'MAURITIUS': 'MUS', 'MU': 'MUS', 
-    'MAYOTTE': 'MYT', 'YT': 'MYT', 'MEXICO': 'MEX', 'MX': 'MEX', 'MICRONESIA': 'FSM', 'FM': 'FSM', 
-    'MINOR OUTL.ISL.': 'UMI', 'UM': 'UMI', 'MOLDOVA': 'MDA', 'MD': 'MDA', 'MONACO': 'MCO', 'MC': 'MCO', 
-    'MONTENEGRO': 'MNE', 'ME': 'MNE', 'MONTSERRAT': 'MSR', 'MS': 'MSR', 'MOROCCO': 'MAR', 'MA': 'MAR', 
-    'MOZAMBIQUE': 'MOZ', 'MZ': 'MOZ', 'MÔNG CỔ': 'MNG', 'MN': 'MNG', 'N.MARIANA ISLND': 'MNP', 'MP': 'MNP', 
-    'NAM TƯ': 'HRV', 'HR': 'HRV', 'NAMIBIA': 'NAM', 'NA': 'NAM', 'NATO': 'NT', 'NAURU': 'NRU', 'NR': 'NRU', 
-    'NAVASSA ISLAND': 'BQ', 'NEPAL': 'NPL', 'NP': 'NPL', 'NEW CALEDONIA': 'NCL', 'NC': 'NCL', 'NEW ZEALAND': 'NZL', 
-    'NZ': 'NZL', 'NGA': 'RUS', 'RU': 'RUS', 'NHẬT': 'JPN', 'JP': 'JPN', 'NICARAGUA': 'NIC', 'NI': 'NIC', 'NIGER': 'NER', 
-    'NE': 'NER', 'NIGERIA': 'NGA', 'NG': 'NGA', 'NIUE': 'NIU', 'NU': 'NIU', 'NORFOLK ISLANDS': 'NFK', 'NF': 'NFK', 
-    'NORWAY': 'NOR', 'NO': 'NOR', 'OMAN': 'OMN', 'OM': 'OMN', 'ORANGE': 'OR', 'OTHER COUNTRY': 'OC', 'PAKISTAN': 'PAK', 
-    'PK': 'PAK', 'PALAU': 'PLW', 'PW': 'PLW', 'PALESTINE': 'PSE', 'PS': 'PSE', 'PALMYRA ATOLL': 'LQ', 'PANAMA': 'PAN', 
-    'PA': 'PAN', 'PAP. NEW GUINEA': 'PNG', 'PG': 'PNG', 'PARAGUAY': 'PRY', 'PY': 'PRY', 'PERU': 'PER', 'PE': 'PER', 
-    'PHILIPPIN': 'PHL', 'PH': 'PHL', 'PHÁP': 'FRA', 'FR': 'FRA', 'PITCAIRN ISLNDS': 'PCN', 'PN': 'PCN', 
-    'PUERTO RICO': 'PRI', 'PR': 'PRI', 'QATAR': 'QAT', 'QA': 'QAT', 'REP.OF CONGO': 'COG', 'CG': 'COG', 
-    'REUNION': 'REU', 'RE': 'REU', 'RU MA NI': 'ROU', 'RO': 'ROU', 'RWANDA': 'RWA', 'RW': 'RWA', 'S. SANDWICH INS': 'SGS', 
-    'GS': 'SGS', 'S.TOME,PRINCIPE': 'STP', 'ST': 'STP', 'SAINT HELENA': 'SHN', 'SH': 'SHN', 'SAMOA': 'WSM', 'WS': 'WSM', 
-    'SAMOA, AMERICA': 'ASM', 'AS': 'ASM', 'SAN MARINO': 'SMR', 'SM': 'SMR', 'SAUDI ARABIA': 'SAU', 'SA': 'SAU', 
-    'SENEGAL': 'SEN', 'SN': 'SEN', 'SERBIA': 'SRB', 'RS': 'SRB', 'SERBIA MTNEGRO': 'YU', 'SERBIA/MONTEN.': 'CS', 
-    'SEYCHELLES': 'SYC', 'SC': 'SYC', 'SIERRA LEONE': 'SLE', 'SL': 'SLE', 'SINGAPORE': 'SGP', 'SG': 'SGP', 
-    'SLOVAKIA': 'SVK', 'SK': 'SVK', 'SLOVENIA': 'SVN', 'SI': 'SVN', 'SOLOMON ISLANDS': 'SLB', 'SB': 'SLB', 
-    'SOMALIA': 'SOM', 'SO': 'SOM', 'SOUTH AFRICA': 'ZAF', 'ZA': 'ZAF', 'SRI LANKA': 'LKA', 'LK': 'LKA', 
-    'ST KITTS NEVIS': 'KNA', 'KN': 'KNA', 'ST. LUCIA': 'LCA', 'LC': 'LCA', 'ST. VINCENT': 'VCT', 'VC': 'VCT', 
-    'ST.PIER,MIQUEL.': 'SPM', 'PM': 'SPM', 'SUDAN': 'SDN', 'SD': 'SDN', 'SURINAME': 'SUR', 'SR': 'SUR', 'SVALBARD': 'SJM', 
-    'SJ': 'SJM', 'SWAZILAND': 'SWZ', 'SZ': 'SWZ', 'SWITZERLAND': 'CHE', 'CH': 'CHE', 'SYRIA': 'SYR', 'SY': 'SYR', 
-    'SÉC': 'CZE', 'CZ': 'CZE', 'TAJIKISTAN': 'TJK', 'TJ': 'TJK', 'TANZANIA': 'TZA', 'TZ': 'TZA', 'THÁI LAN': 'THA', 
-    'TH': 'THA', 'THỤY ĐIỂN': 'SWE', 'SE': 'SWE', 'TOGO': 'TGO', 'TG': 'TGO', 'TOKELAU ISLANDS': 'TKL', 'TK': 'TKL', 
-    'TONGA': 'TON', 'TO': 'TON', 'TRINIDAD,TOBAGO': 'TTO', 'TT': 'TTO', 'TROMELIN ISLAND': 'TE', 'TRUNG QUỐC': 'CHN', 
-    'CN': 'CHN', 'TUNISIA': 'TUN', 'TN': 'TUN', 'TURKEY': 'TUR', 'TR': 'TUR', 'TURKMENISTAN': 'TKM', 'TM': 'TKM', 
-    'TURKSH CAICOSIN': 'TCA', 'TC': 'TCA', 'TUVALU': 'TUV', 'TV': 'TUV', 'TÂY BAN NHA': 'ESP', 'ES': 'ESP', 
-    'UGANDA': 'UGA', 'UG': 'UGA', 'UKRAINE': 'UKR', 'UA': 'UKR', 'UNITED ARAB EMI': 'ARE', 'UE': 'UE', 
-    'UNITED NATIONS': 'UN', 'UNKNOWN COUNTRY': 'UC', 'URUGUAY': 'URY', 'UY': 'URY', 'UTD.ARAB EMIR.': 'ARE', 'AE': 'ARE', 
-    'UZBEKISTAN': 'UZB', 'UZ': 'UZB', 'ÚC': 'AUS', 'AU': 'AUS', 'VANUATU': 'VUT', 'VU': 'VUT', 'VATICAN CITY': 'VAT', 
-    'VA': 'VAT', 'VENEZUELA': 'VEN', 'VE': 'VEN', 'WALLIS,FUTUNA': 'WLF', 'WF': 'WLF', 'WEST SAHARA': 'ESH', 'EH': 'ESH', 
-    'YEMEN': 'YEM', 'YE': 'YEM', 'ZAMBIA': 'ZMB', 'ZM': 'ZMB', 'ZIMBABWE': 'ZWE', 'ZW': 'ZWE', 'KHÁC': 'ZZ', 
-    'TRUNG QUỐC (ĐÀI LOAN)': 'TWN', 'CH HÀN': 'KOR', 'VƯƠNG QUỐC ANH VÀ BẮC AI LEN': 'GBR', 'VƯƠNG QUỐC ANH': 'GBR', 
-    'UK': 'GBR', 'Ô-XTRÂY-LI-A': 'AUS', 'Ô-XTRÂY': 'AUS', 'MA-LAI-XI-A': 'MYS', 'MA-LAI': 'MYS', 'XIN-GA-PO': 'SGP', 
-    'XIN-GA': 'SGP', 'IN-ĐÔ-NÊ-XI-A': 'IDN', 'IN-ĐÔ-NÊ': 'IDN', 'CA-NA-DA': 'CAN', 'MÊ-XI-CÔ': 'MEX', 'HỒNG KÔNG': 'HKG', 
-    'THỔ NHĨ KỲ': 'TUR', 'THỔ NHĨ': 'TUR', 'VƯƠNG QUỐC NA-UY': 'NOR', 'ÁC-HEN-TI-NA': 'ARG', 'AC-HEN-TI-NA': 'ARG', 
-    'ITALIA': 'ITA', 'AI LÊN': 'IRL', 'NƯU TÂY LAN': 'NZL', 'CĂM-PU-CHIA': 'KHM', 'BĂNG-LA-ĐÉT': 'BGD', 'NÊ-PAN': 'NPL', 
-    'PA-KÍT-XTAN': 'PAK', 'NI-GIÊ-RI-A': 'NGA', 'MA-RỐC': 'MAR', 'AN-GIÊ-RI': 'DZA', 'BÊ-LA-RÚT': 'BLR',
-    'CH LIÊN BANG ĐỨC': 'DEU', 'CỘNG HÒA LIÊN BANG ĐỨC': 'DEU', 'CỘNG HOÀ LIÊN BANG ĐỨC': 'DEU'
+    'GABON': 'GAB', 'GA': 'GAB', 'GAMBIA': 'GMB', 'GM': 'GMB', 'GAZA STRIP': 'GZ', 'GEORGIA': 'GEO', 
+    'GE': 'GEO', 'GHANA': 'GHA', 'GH': 'GHA', 'GIBRALTAR': 'GIB', 'GI': 'GIB', 'GLORIOSO ISLAND': 'GO', 
+    'GREECE': 'GRC', 'GR': 'GRC', 'GREENLAND': 'GRL', 'GL': 'GRL', 'GRENADA': 'GRD', 'GD': 'GRD', 
+    'GUADELOUPE': 'GLP', 'GP': 'GLP', 'GUAM': 'GUM', 'GU': 'GUM', 'GUATEMALA': 'GTM', 'GT': 'GTM', 
+    'GUERNSEY': 'GGY', 'GK': 'GGY', 'GUINEA': 'GIN', 'GN': 'GIN', 'GUINEA-BISSAU': 'GNB', 'GW': 'GNB', 
+    'GUYANA': 'GUY', 'GY': 'GUY', 'HAITI': 'HTI', 'HT': 'HTI', 'HEARD/MCDON.ISL': 'HMD', 'HM': 'HMD', 
+    'HOA KỲ': 'USA', 'US': 'USA', 'HONDURAS': 'HND', 'HN': 'HND', 'HONG KONG': 'HKG', 'HK': 'HKG', 
+    'HOWLAND ISLAND': 'HQ', 'HUNG GA RI': 'HUN', 'HU': 'HUN', 'HÀ LAN': 'NLD', 'NL': 'NLD', 'HÀN QUỐC': 'KOR', 
+    'KR': 'KOR', 'I TA LI A': 'ITA', 'IT': 'ITA', 'ICELAND': 'ISL', 'IS': 'ISL', 'INDONESIA': 'IDN', 
+    'ID': 'IDN', 'IRAN': 'IRN', 'IR': 'IRN', 'IRAQ': 'IRQ', 'IQ': 'IRQ', 'ISLE OF MAN': 'IMN', 
+    'IM': 'IMN', 'ISRAEL': 'ISR', 'IL': 'ISR', 'JAMAICA': 'JAM', 'JM': 'JAM', 'JAN MAYEN': 'JN', 
+    'JAPAN RYUKYU': 'JA', 'JARVIS ISLAND': 'DQ', 'JERSEY': 'JEY', 'JE': 'JEY', 'JOHNSTON ATOLL': 'JQ', 'JORDAN': 'JOR', 
+    'JO': 'JOR', 'JUAN DE NOVA IS': 'JU', 'KAZAKHSTAN': 'KAZ', 'KZ': 'KAZ', 'KENYA': 'KEN', 'KE': 'KEN', 
+    'KINGMAN REEF': 'KQ', 'KIRIBATI': 'KIR', 'KI': 'KIR', 'KUWAIT': 'KWT', 'KW': 'KWT', 'KYRGYZSTAN': 'KGZ', 
+    'KG': 'KGZ', 'LATVIA': 'LVA', 'LV': 'LVA', 'LEBANON': 'LBN', 'LB': 'LBN', 'LESOTHO': 'LSO', 
+    'LS': 'LSO', 'LIBERIA': 'LBR', 'LR': 'LBR', 'LIBI': 'LBY', 'LY': 'LBY', 'LIECHTENSTEIN': 'LIE', 
+    'LI': 'LIE', 'LITHUANIA': 'LTU', 'LT': 'LTU', 'LUXEMBOURG': 'LUX', 'LU': 'LUX', 'LÀO': 'LAO', 
+    'LA': 'LAO', 'MACAU': 'MAC', 'MO': 'MAC', 'MACEDONIA': 'MKD', 'MK': 'MKD', 'MADAGASCAR': 'MDG', 
+    'MG': 'MDG', 'MALAWI': 'MWI', 'MW': 'MWI', 'MALAYSIA': 'MYS', 'MY': 'MYS', 'MALDIVES': 'MDV', 
+    'MV': 'MDV', 'MALI': 'MLI', 'ML': 'MLI', 'MALTA': 'MLT', 'MT': 'MLT', 'MARSHALL ISLNDS': 'MHL', 
+    'MH': 'MHL', 'MARTINIQUE': 'MTQ', 'MQ': 'MTQ', 'MAURETANIA': 'MRT', 'MR': 'MRT', 'MAURITIUS': 'MUS', 
+    'MU': 'MUS', 'MAYOTTE': 'MYT', 'YT': 'MYT', 'MEXICO': 'MEX', 'MX': 'MEX', 'MICRONESIA': 'FSM', 
+    'FM': 'FSM', 'MINOR OUTL.ISL.': 'UMI', 'UM': 'UMI', 'MOLDOVA': 'MDA', 'MD': 'MDA', 'MONACO': 'MCO', 
+    'MC': 'MCO', 'MONTENEGRO': 'MNE', 'ME': 'MNE', 'MONTSERRAT': 'MSR', 'MS': 'MSR', 'MOROCCO': 'MAR', 
+    'MA': 'MAR', 'MOZAMBIQUE': 'MOZ', 'MZ': 'MOZ', 'MÔNG CỔ': 'MNG', 'MN': 'MNG', 'N.MARIANA ISLND': 'MNP', 
+    'MP': 'MNP', 'NAM TƯ': 'HRV', 'HR': 'HRV', 'NAMIBIA': 'NAM', 'NA': 'NAM', 'NATO': 'NT', 
+    'NAURU': 'NRU', 'NR': 'NRU', 'NAVASSA ISLAND': 'BQ', 'NEPAL': 'NPL', 'NP': 'NPL', 'NEW CALEDONIA': 'NCL', 
+    'NC': 'NCL', 'NEW ZEALAND': 'NZL', 'NZ': 'NZL', 'NGA': 'RUS', 'RU': 'RUS', 'NHẬT': 'JPN', 
+    'JP': 'JPN', 'NICARAGUA': 'NIC', 'NI': 'NIC', 'NIGER': 'NER', 'NE': 'NER', 'NIGERIA': 'NGA', 
+    'NG': 'NGA', 'NIUE': 'NIU', 'NU': 'NIU', 'NORFOLK ISLANDS': 'NFK', 'NF': 'NFK', 'NORWAY': 'NOR', 
+    'NO': 'NOR', 'OMAN': 'OMN', 'OM': 'OMN', 'ORANGE': 'OR', 'OTHER COUNTRY': 'OC', 'PAKISTAN': 'PAK', 
+    'PK': 'PAK', 'PALAU': 'PLW', 'PW': 'PLW', 'PALESTINE': 'PSE', 'PS': 'PSE', 'PALMYRA ATOLL': 'LQ', 
+    'PANAMA': 'PAN', 'PA': 'PAN', 'PAP. NEW GUINEA': 'PNG', 'PG': 'PNG', 'PARAGUAY': 'PRY', 'PY': 'PRY', 
+    'PERU': 'PER', 'PE': 'PER', 'PHILIPPIN': 'PHL', 'PH': 'PHL', 'PHÁP': 'FRA', 'FR': 'FRA', 
+    'PITCAIRN ISLNDS': 'PCN', 'PN': 'PCN', 'PUERTO RICO': 'PRI', 'PR': 'PRI', 'QATAR': 'QAT', 'QA': 'QAT', 
+    'REP.OF CONGO': 'COG', 'CG': 'COG', 'REUNION': 'REU', 'RE': 'REU', 'RU MA NI': 'ROU', 'RO': 'ROU', 
+    'RWANDA': 'RWA', 'RW': 'RWA', 'S. SANDWICH INS': 'SGS', 'GS': 'SGS', 'S.TOME,PRINCIPE': 'STP', 'ST': 'STP', 
+    'SAINT HELENA': 'SHN', 'SH': 'SHN', 'SAMOA': 'WSM', 'WS': 'WSM', 'SAMOA, AMERICA': 'ASM', 'AS': 'ASM', 
+    'SAN MARINO': 'SMR', 'SM': 'SMR', 'SAUDI ARABIA': 'SAU', 'SA': 'SAU', 'SENEGAL': 'SEN', 'SN': 'SEN', 
+    'SERBIA': 'SRB', 'RS': 'SRB', 'SERBIA MTNEGRO': 'YU', 'SERBIA/MONTEN.': 'CS', 'SEYCHELLES': 'SYC', 'SC': 'SYC', 
+    'SIERRA LEONE': 'SLE', 'SL': 'SLE', 'SINGAPORE': 'SGP', 'SG': 'SGP', 'SLOVAKIA': 'SVK', 'SK': 'SVK', 
+    'SLOVENIA': 'SVN', 'SI': 'SVN', 'SOLOMON ISLANDS': 'SLB', 'SB': 'SLB', 'SOMALIA': 'SOM', 'SO': 'SOM', 
+    'SOUTH AFRICA': 'ZAF', 'ZA': 'ZAF', 'SRI LANKA': 'LKA', 'LK': 'LKA', 'ST KITTS NEVIS': 'KNA', 'KN': 'KNA', 
+    'ST. LUCIA': 'LCA', 'LC': 'LCA', 'ST. VINCENT': 'VCT', 'VC': 'VCT', 'ST.PIER,MIQUEL.': 'SPM', 'PM': 'SPM', 
+    'SUDAN': 'SDN', 'SD': 'SDN', 'SURINAME': 'SUR', 'SR': 'SUR', 'SVALBARD': 'SJM', 'SJ': 'SJM', 
+    'SWAZILAND': 'SWZ', 'SZ': 'SWZ', 'SWITZERLAND': 'CHE', 'CH': 'CHE', 'SYRIA': 'SYR', 'SY': 'SYR', 
+    'SÉC': 'CZE', 'CZ': 'CZE', 'TAJIKISTAN': 'TJK', 'TJ': 'TJK', 'TANZANIA': 'TZA', 'TZ': 'TZA', 
+    'THÁI LAN': 'THA', 'TH': 'THA', 'THỤY ĐIỂN': 'SWE', 'SE': 'SWE', 'TOGO': 'TGO', 'TG': 'TGO', 
+    'TOKELAU ISLANDS': 'TKL', 'TK': 'TKL', 'TONGA': 'TON', 'TO': 'TON', 'TRINIDAD,TOBAGO': 'TTO', 'TT': 'TTO', 
+    'TROMELIN ISLAND': 'TE', 'TRUNG QUỐC': 'CHN', 'CN': 'CHN', 'TUNISIA': 'TUN', 'TN': 'TUN', 'TURKEY': 'TUR', 
+    'TR': 'TUR', 'TURKMENISTAN': 'TKM', 'TM': 'TKM', 'TURKSH CAICOSIN': 'TCA', 'TC': 'TCA', 'TUVALU': 'TUV', 
+    'TV': 'TUV', 'TÂY BAN NHA': 'ESP', 'ES': 'ESP', 'UGANDA': 'UGA', 'UG': 'UGA', 'UKRAINE': 'UKR', 
+    'UA': 'UKR', 'UNITED ARAB EMI': 'ARE', 'UE': 'UE', 'UNITED NATIONS': 'UN', 'UNKNOWN COUNTRY': 'UC', 'URUGUAY': 'URY', 
+    'UY': 'URY', 'UTD.ARAB EMIR.': 'ARE', 'AE': 'ARE', 'UZBEKISTAN': 'UZB', 'UZ': 'UZB', 'ÚC': 'AUS', 
+    'AU': 'AUS', 'VANUATU': 'VUT', 'VU': 'VUT', 'VATICAN CITY': 'VAT', 'VA': 'VAT', 'VENEZUELA': 'VEN', 
+    'VE': 'VEN', 'WALLIS,FUTUNA': 'WLF', 'WF': 'WLF', 'WEST SAHARA': 'ESH', 'EH': 'ESH', 'YEMEN': 'YEM', 
+    'YE': 'YEM', 'ZAMBIA': 'ZMB', 'ZM': 'ZMB', 'ZIMBABWE': 'ZWE', 'ZW': 'ZWE', 'KHÁC': 'ZZ', 
+    'TRUNG QUỐC (ĐÀI LOAN)': 'TWN', 'CH HÀN': 'KOR', 'VƯƠNG QUỐC ANH VÀ BẮC AI LEN': 'GBR', 'VƯƠNG QUỐC ANH': 'GBR', 'UK': 'GBR', 'Ô-XTRÂY-LI-A': 'AUS', 
+    'Ô-XTRÂY': 'AUS', 'MA-LAI-XI-A': 'MYS', 'MA-LAI': 'MYS', 'XIN-GA-PO': 'SGP', 'XIN-GA': 'SGP', 'IN-ĐÔ-NÊ-XI-A': 'IDN', 
+    'IN-ĐÔ-NÊ': 'IDN', 'CA-NA-DA': 'CAN', 'MÊ-XI-CÔ': 'MEX', 'HỒNG KÔNG': 'HKG', 'THỔ NHĨ KỲ': 'TUR', 'THỔ NHĨ': 'TUR', 
+    'VƯƠNG QUỐC NA-UY': 'NOR', 'ÁC-HEN-TI-NA': 'ARG', 'AC-HEN-TI-NA': 'ARG', 'ITALIA': 'ITA', 'AI LÊN': 'IRL', 'NƯU TÂY LAN': 'NZL', 
+    'BĂNG-LA-ĐÉT': 'BGD', 'NÊ-PAN': 'NPL', 'PA-KÍT-XTAN': 'PAK', 'NI-GIÊ-RI-A': 'NGA', 'MA-RỐC': 'MAR', 
+    'AN-GIÊ-RI': 'DZA', 'BÊ-LA-RÚT': 'BLR', 'CH LIÊN BANG ĐỨC': 'DEU', 'CỘNG HÒA LIÊN BANG ĐỨC': 'DEU', 'CỘNG HOÀ LIÊN BANG ĐỨC': 'DEU', 'NHẬT BẢN': 'JPN', 
+    'MỸ': 'USA', 'FX': 'FRA', 'RQ': 'RUS', 'PHILIPPINES': 'PHL', 'CANADA': 'CAN', 'NA UY': 'NOR', 
+    'Ý': 'ITA', 'THỤY SĨ': 'CHE', 'PHẦN LAN': 'FIN', 'HY LẠP': 'GRC', 'IRELAND': 'IRL', 'MYANMAR': 'MMR', 
+    'MA CAO': 'MAC', 'TRIỀU TIÊN': 'PRK', 'CU BA': 'CUB', 'COLOMBIA': 'COL', 'CÔ-LÔM-BI-A': 'COL', 'CHI-LÊ': 'CHL', 
+    'AI CẬP': 'EGY', 'UAE': 'ARE', 'CÁC TIỂU VƯƠNG QUỐC': 'ARE', 'Ả RẬP XÊ ÚT': 'SAU', 'U-CRAI-NA': 'UKR', 'MARỐC': 'MAR', 
+    'ZAIRE': 'COD', 'ZR': 'COD', 
 }
 VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 
@@ -107,7 +116,7 @@ VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 # ==========================================
 
 def get_src_name(s_key):
-    """Đổi tên nhãn nguồn dữ liệu cho dễ nhìn và phân biệt rõ ràng"""
+    """Đổi tên nhãn nguồn dữ liệu cho dễ nhìn"""
     s_lower = s_key.lower()
     if 'kblt' in s_lower: return 'KBLT'
     if 'gihf' in s_lower: return 'GIHF'
@@ -453,6 +462,22 @@ def process_data(check_date, files_dict):
             err += f"Lệch Hạn Visa ({diff}); "
 
         is_due, is_stay, note, loai_loi = False, False, "", ""
+        
+        # [BẢN VÁ LỖI CỐT LÕI]: Chỉ đánh cờ Thiếu File khi khách là Stayover (Ngày Out thực tế > Ngày Check).
+        # Khách Check-out trong ngày (Ngày Out == Ngày Check) thì bỏ qua, tự động xếp vào "Đã Checked-out hoàn toàn".
+        if has_ca_hien_tai:
+            if 'gihf_chieu' in uploaded_files and 'gihf_chieu' not in srcs:
+                if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu GIHF (Hiện tại)"
+            elif 'kblt_chieu' in uploaded_files and 'kblt_chieu' not in srcs:
+                if chot_out_date and chot_out_date > check_dt: loai_loi = "Thiếu KBLT (Hiện tại)"
+            elif not is_vietnamese and 'pol_chieu' in uploaded_files and 'pol_chieu' not in srcs:
+                if pIn == check_dt: loai_loi = "Thiếu Police (Hiện tại)"
+        elif has_ca_truoc:
+            if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: loai_loi = "Thiếu GIHF (Ca trước)"
+            elif 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: loai_loi = "Thiếu KBLT (Ca trước)"
+            elif not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: 
+                if pIn and 0 <= (check_dt - pIn).days <= 1: loai_loi = "Thiếu Police (Ca trước)"
+
         if has_ca_hien_tai:
             if pIn == check_dt or in_pc:
                 if (in_kc and out_c == check_dt) or (not in_kc and not in_gc and out_s == check_dt): 
@@ -522,20 +547,7 @@ def process_data(check_date, files_dict):
         if is_visa_expired_now: loai_loi = "Visa Hết Hạn"
         elif err: 
             if "[Cảnh Báo]" in err: loai_loi = "Cảnh Báo Visa"
-            else: loai_loi = "Lưu ý"
-        else:
-            if has_ca_hien_tai:
-                if 'gihf_chieu' in uploaded_files and 'gihf_chieu' not in srcs:
-                    if chot_out_date and chot_out_date >= check_dt: loai_loi = "Thiếu GIHF (Hiện tại)"
-                elif 'kblt_chieu' in uploaded_files and 'kblt_chieu' not in srcs:
-                    if chot_out_date and chot_out_date >= check_dt: loai_loi = "Thiếu KBLT (Hiện tại)"
-                elif not is_vietnamese and 'pol_chieu' in uploaded_files and 'pol_chieu' not in srcs:
-                    if pIn == check_dt: loai_loi = "Thiếu Police (Hiện tại)"
-            elif has_ca_truoc:
-                if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: loai_loi = "Thiếu GIHF (Ca trước)"
-                elif 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: loai_loi = "Thiếu KBLT (Ca trước)"
-                elif not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: 
-                    if pIn and 0 <= (check_dt - pIn).days <= 1: loai_loi = "Thiếu Police (Ca trước)"
+            else: loai_loi = "Lưu ý" if not loai_loi else loai_loi
 
         if not is_vietnamese:
             opera_missing = False
