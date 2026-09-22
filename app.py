@@ -112,7 +112,6 @@ def safe_str(val):
 def safe_room(r_val):
     r = safe_str(r_val)
     r_stripped = r.lstrip('0')
-    # Tránh xóa mất số nếu phòng là "0" hoặc "00"
     return (r_stripped if r_stripped else r).split('.')[0]
 
 def standardize_text(txt):
@@ -129,7 +128,6 @@ def is_same_guest(name1, name2):
     n1, n2 = clean_name(name1), clean_name(name2)
     if n1 == n2 or n1.replace(" ","") == n2.replace(" ",""): return True
     if len(n1) > 8 and len(n2) > 8 and (n1.replace(" ","") in n2.replace(" ","") or n2.replace(" ","") in n1.replace(" ","")): return True
-    # Đổi >= 2 thay vì > 2 để cứu các tên Châu Á ngắn (VD: Lê Vy, Hạ Ly)
     arr1 = [w for w in n1.split() if len(w) >= 2 and w not in ["BIN", "BINTI", "THI", "VAN", "THE"]]
     arr2 = [w for w in n2.split() if len(w) >= 2 and w not in ["BIN", "BINTI", "THI", "VAN", "THE"]]
     return sum(1 for w in arr1 if w in arr2) >= 2 or (len(arr1) <= 1 and sum(1 for w in arr1 if w in arr2) >= 1)
@@ -178,7 +176,11 @@ def is_dob_match(d1, d2):
         if is_jan1_1 or is_jan1_2 or is_str_1 or is_str_2: return True
     return False
 
-def parse_date(val, is_dob=False, is_opera=False):
+def parse_date(val, is_dob=False):
+    """
+    Bản vá siêu dịch giả: LUÔN cố gắng chuyển TẤT CẢ chuỗi ngày từ bất kỳ file nào 
+    (bao gồm Opera 15-SEP-26 hay Excel 15/09/2026) về định dạng Datetime chung.
+    """
     if pd.isna(val) or val is None: return None
     val_str = str(val).strip()
     if val_str.lower() in ["nan", "nat", "none", ""]: return None
@@ -188,11 +190,11 @@ def parse_date(val, is_dob=False, is_opera=False):
         try: return val.to_pydatetime().replace(tzinfo=None)
         except: pass
         
-    if is_opera:
-        try: return datetime.strptime(val_str, '%d-%b-%y').replace(tzinfo=None)
-        except:
-            try: return datetime.strptime(val_str, '%d-%b-%Y').replace(tzinfo=None)
-            except: pass
+    # Luôn ưu tiên dịch định dạng Opera (Tiếng Anh) cho mọi nguồn dữ liệu
+    try: return datetime.strptime(val_str.upper(), '%d-%b-%y').replace(tzinfo=None)
+    except:
+        try: return datetime.strptime(val_str.upper(), '%d-%b-%Y').replace(tzinfo=None)
+        except: pass
             
     match = re.search(r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b', val_str)
     if match:
@@ -247,8 +249,8 @@ def parse_xml(file, is_police=False):
                 'Giới tính': std_gender(gender.text if gender is not None else ""),
                 'Quốc tịch': standardize_text(nat.text if nat is not None else ""),
                 'Số hộ chiếu': standardize_text(passport.text if passport is not None else ""),
-                'Ngày đến ': parse_date(din.text, is_opera=(not is_police)) if din is not None else None,
-                'Thời gian dự kiến tạm trú tại CSLT': parse_date(dout.text, is_opera=(not is_police)) if dout is not None else None,
+                'Ngày đến ': parse_date(din.text) if din is not None else None,
+                'Thời gian dự kiến tạm trú tại CSLT': parse_date(dout.text) if dout is not None else None,
                 'Thời hạn được phép tạm trú tại Việt Nam': parse_date(visa.text) if visa is not None else None,
                 'Số phòng': safe_room(room.text if room is not None else "")
             })
@@ -258,7 +260,7 @@ def parse_xml(file, is_police=False):
         return pd.DataFrame()
 
 # ==========================================
-# 3. ĐỐI CHIẾU DỮ LIỆU ĐA CHIỀU (UP TO 6 FILES)
+# 3. ĐỐI CHIẾU DỮ LIỆU ĐA CHIỀU
 # ==========================================
 def process_data(check_date, files_dict):
     st.info("Đang tiến hành phân tích và soi chiếu đa chiều...")
@@ -274,10 +276,10 @@ def process_data(check_date, files_dict):
                 
                 if not passp or passp == 'NAN': passp = f"NOPASS_{room}_{name[:5]}"
                 
-                din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
-                if 'kblt' in source_label: din, dout = parse_date(din), parse_date(dout)
-                
-                visa = r.get('Thời hạn được phép tạm trú tại Việt Nam', None)
+                # Bản fix triệt để: LUÔN DỊCH NGÀY THÁNG TỪ BẤT KỲ FILE NÀO
+                din = parse_date(r.get('Ngày đến '))
+                dout = parse_date(r.get('Thời gian dự kiến tạm trú tại CSLT'))
+                visa = parse_date(r.get('Thời hạn được phép tạm trú tại Việt Nam'))
                 
                 all_guests.append({
                     'Key': passp, 'Room': room, 'Name': name, 'DOB': r.get('Ngày sinh'), 
@@ -486,8 +488,8 @@ st.markdown("---")
 def color_warning(val):
     if not isinstance(val, str): return ''
     val_up = val.upper()
-    if "[CẢNH BÁO]" in val_up: return 'color: #D32F2F; font-weight: bold' # Đỏ đậm
-    if "[SẮP HẾT HẠN]" in val_up: return 'color: #F57C00; font-weight: bold' # Cam đậm
+    if "[CẢNH BÁO]" in val_up: return 'color: #D32F2F; font-weight: bold'
+    if "[SẮP HẾT HẠN]" in val_up: return 'color: #F57C00; font-weight: bold'
     return ''
 
 if st.button("🚀 CHẠY KIỂM TRA TỔNG HỢP", use_container_width=True):
@@ -498,7 +500,6 @@ if st.button("🚀 CHẠY KIỂM TRA TỔNG HỢP", use_container_width=True):
     else:
         df_loi, df_stay, df_due = process_data(check_date, files)
         
-        # Thiết lập cột chuẩn để chống biến mất giao diện khi DataFrame rỗng
         cols = ['Phòng', 'Tên Khách', 'Passport', 'Ngày sinh', 'Giới tính', 'Quốc tịch', 'Ngày In', 'Ngày Out', 'Hạn Visa']
         final_loi_cols = ['Phân Loại'] + cols + ['Chi Tiết', 'Hồ Sơ']
         final_stay_cols = cols + ['Trạng Thái/Ghi Chú', 'Hồ Sơ']
