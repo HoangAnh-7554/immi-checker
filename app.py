@@ -6,14 +6,19 @@ from datetime import datetime
 import io
 import numpy as np
 import pycountry
+import unicodedata
 
 # ==========================================
 # 1. CÁC HÀM XỬ LÝ LÕI VÀ ĐỒNG BỘ DỮ LIỆU
 # ==========================================
 
+def standardize_text(txt):
+    """Ép toàn bộ chuẩn Unicode Tiếng Việt về 1 chuẩn duy nhất (NFC) để tránh lỗi tàng hình"""
+    if pd.isna(txt) or txt is None: return ""
+    return unicodedata.normalize('NFC', str(txt)).strip().upper()
+
 def clean_name(name):
-    if pd.isna(name) or name is None: return ""
-    name = str(name).upper().replace("*", "").replace(",", " ").replace(".", " ")
+    name = standardize_text(name).replace("*", "").replace(",", " ").replace(".", " ")
     name = re.sub(r'\b(MR|MS|MRS)\b', '', name)
     return " ".join(re.sub(r'[^A-Z ]', '', name).split())
 
@@ -26,15 +31,16 @@ def is_same_guest(name1, name2):
     return sum(1 for w in arr1 if w in arr2) >= 2 or (len(arr1) <= 1 and sum(1 for w in arr1 if w in arr2) >= 1)
 
 def std_gender(g):
-    if pd.isna(g) or not g: return ""
-    g = str(g).strip().upper()
+    g = standardize_text(g)
+    if not g: return ""
     if g in ['M', 'NAM', 'MR.', 'MR', 'MALE']: return 'NAM'
     if g in ['F', 'NỮ', 'NU', 'MS', 'MRS.', 'MRS', 'FEMALE', 'MISS']: return 'NỮ'
     return g
 
 def get_iso3(val):
-    if not val or pd.isna(val): return ""
-    val = str(val).strip().upper()
+    val = standardize_text(val)
+    if not val: return ""
+    
     vn_map = {
         'VIỆT NAM': 'VNM', 'VN': 'VNM', 'ĐÀI LOAN': 'TWN', 'TW': 'TWN', 
         'TRUNG QUỐC': 'CHN', 'CN': 'CHN', 'CH HÀN': 'KOR', 'HÀN QUỐC': 'KOR', 
@@ -79,6 +85,7 @@ def get_iso3(val):
         'KE': 'KEN', 'TANZANIA': 'TZA', 'TZ': 'TZA', 'GHANA': 'GHA', 
         'GH': 'GHA', 'ZAIRE': 'COD', 'ZR': 'COD'
     }
+    
     if val in vn_map: return vn_map[val]
     for vn_name, iso3 in vn_map.items():
         if vn_name in val: return iso3
@@ -87,7 +94,7 @@ def get_iso3(val):
 
 def match_nationality(nat1, nat2):
     if not nat1 or not nat2: return False
-    n1, n2 = str(nat1).strip().upper(), str(nat2).strip().upper()
+    n1, n2 = standardize_text(nat1), standardize_text(nat2)
     if n1 == n2: return True
     iso1, iso2 = get_iso3(n1), get_iso3(n2)
     if iso1 == iso2: return True
@@ -130,7 +137,7 @@ def parse_kblt_excel(file):
         df = pd.read_excel(file, header=9)
         df['Ngày sinh'] = df.get('Ngày sinh', df.get('Năm sinh', '')).apply(lambda x: parse_date(x, is_dob=True))
         df['Giới tính'] = df.get('GT', df.get('Giới tính', '')).apply(std_gender)
-        df['Quốc tịch'] = df.get('QT', df.get('Quốc tịch', '')).astype(str).str.upper()
+        df['Quốc tịch'] = df.get('QT', df.get('Quốc tịch', '')).apply(standardize_text)
         if 'Thời hạn được phép tạm trú tại Việt Nam' in df.columns:
             df['Thời hạn được phép tạm trú tại Việt Nam'] = df['Thời hạn được phép tạm trú tại Việt Nam'].apply(lambda x: parse_date(x))
         return df
@@ -158,8 +165,8 @@ def parse_xml(file, is_police=False):
                 'Họ tên': str(name.text).replace('*', '').strip() if name is not None else "",
                 'Ngày sinh': parse_date(dob.text, is_dob=True) if dob is not None else None,
                 'Giới tính': std_gender(gender.text) if gender is not None else "",
-                'Quốc tịch': str(nat.text).strip().upper() if nat is not None else "",
-                'Số hộ chiếu': str(passport.text).strip().upper() if passport is not None else "",
+                'Quốc tịch': standardize_text(nat.text) if nat is not None else "",
+                'Số hộ chiếu': standardize_text(passport.text) if passport is not None else "",
                 'Ngày đến ': parse_date(din.text, is_opera=(not is_police)),
                 'Thời gian dự kiến tạm trú tại CSLT': parse_date(dout.text, is_opera=(not is_police)),
                 'Thời hạn được phép tạm trú tại Việt Nam': visa.text if visa is not None else "",
@@ -184,7 +191,7 @@ def process_data(check_date, files_dict):
             for _, r in df.iterrows():
                 room = str(r.get('Số phòng', '')).strip().split('.')[0]
                 name = str(r.get('Họ tên', '')).strip()
-                passp = str(r.get('Số hộ chiếu', '')).strip().upper()
+                passp = standardize_text(r.get('Số hộ chiếu', ''))
                 if not passp or passp == 'NAN': passp = f"NOPASS_{room}_{name[:5]}"
                 din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
                 if 'kblt' in source_label: din, dout = parse_date(din), parse_date(dout)
