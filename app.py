@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import re
 from datetime import datetime
 import io
+import numpy as np
 
 # ==========================================
 # 1. CÁC HÀM XỬ LÝ LÕI (CORE LOGIC)
@@ -26,7 +27,6 @@ def is_same_guest(name1, name2):
     return match_count >= 2 or (len(arr1) <= 1 and match_count >= 1)
 
 def parse_universal_date(val, is_opera=False):
-    """Hàm đọc ngày tháng vạn năng cho cả Excel và XML"""
     if pd.isna(val) or val is None or str(val).strip() == "": return None
     if isinstance(val, datetime): return val.replace(tzinfo=None)
     if hasattr(val, 'to_pydatetime'):
@@ -38,7 +38,6 @@ def parse_universal_date(val, is_opera=False):
         try: return datetime.strptime(val_str, '%d-%b-%y').replace(tzinfo=None)
         except: return None
     else:
-        # Tìm định dạng dd/mm/yyyy trong Excel
         match = re.search(r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b', val_str)
         if match:
             d, m, y = int(match.group(1)), int(match.group(2)), int(match.group(3))
@@ -66,20 +65,19 @@ def parse_kblt_excel(file):
         return pd.DataFrame()
 
 def parse_xml(file, is_police=False):
-    """Tách biệt thuật toán đọc XML cho Opera và Police để tránh râu ông nọ cắm cằm bà kia"""
     try:
         tree = ET.parse(file)
         root = tree.getroot()
         data = []
         for nd in root.findall('.//G_C9'):
-            if not is_police: # Dành cho file GIHF
+            if not is_police:
                 name = nd.find('C12').text if nd.find('C12') is not None else (nd.find('C15').text if nd.find('C15') is not None else "")
                 passport = nd.find('C30').text if nd.find('C30') is not None else ""
                 room = nd.find('C42').text if nd.find('C42') is not None else ""
                 din = nd.find('C36').text if nd.find('C36') is not None else ""
                 dout = nd.find('C39').text if nd.find('C39') is not None else ""
                 visa = nd.find('C33').text if nd.find('C33') is not None else ""
-            else: # Dành cho file POLICE
+            else:
                 name = nd.find('C15').text if nd.find('C15') is not None else ""
                 passport = nd.find('C36').text if nd.find('C36') is not None else ""
                 room = nd.find('C60').text if nd.find('C60') is not None else ""
@@ -137,7 +135,6 @@ def process_data(check_date, files_dict):
                 din_val = row.get('Ngày đến ', row.get('Ngày đến', row.get('Từ ngày', None)))
                 dout_val = row.get('Thời gian dự kiến tạm trú tại CSLT', row.get('Ngày đi', row.get('Đến ngày', None)))
                 
-                # XML đã ép kiểu sẵn lúc parse, Excel thì ép kiểu ở đây
                 if 'kblt' in source_label:
                     din = parse_universal_date(din_val, is_opera=False)
                     dout = parse_universal_date(dout_val, is_opera=False)
@@ -258,15 +255,18 @@ def process_data(check_date, files_dict):
         if not pRoom or pRoom == "0" or pRoom.upper() == "PM": 
             loai_loi, err = "Trống Số Phòng", err + "Chưa gán phòng; "
 
-        if err: loai_loi = loai_loi or "Lệch Dữ Liệu"
-        elif has_chieu and in_gc and not in_kc:
-            if not (in_pc and not in_gc) and pIn and pIn < check_dt: loai_loi = "Thiếu KBLT (Chiều)"
-        elif has_chieu and in_kc and not in_gc and out_c and not pd.isna(out_c) and out_c > check_dt:
-            loai_loi = "Thiếu Opera (Chiều)"
-        elif not has_chieu and in_gs and not in_ks and pIn and pIn <= check_dt:
-            loai_loi = "Thiếu KBLT (Sáng)"
-        elif not has_chieu and in_ps and not in_ks:
-            loai_loi = "Chưa Khai Báo KBLT"
+        # LOGIC MỚI: Ép bắt lỗi tuyệt đối nếu có trên Opera/Police mà vắng bóng trên Web
+        if err: 
+            loai_loi = loai_loi or "Lệch Dữ Liệu"
+        else:
+            if has_chieu:
+                if (in_gc or in_pc) and not in_kc:
+                    loai_loi = "Thiếu KBLT (Chiều)"
+                elif in_kc and not in_gc and out_c and not pd.isna(out_c) and out_c > check_dt:
+                    loai_loi = "Thiếu Opera (Chiều)"
+            else:
+                if (in_gs or in_ps) and not in_ks:
+                    loai_loi = "Thiếu KBLT (Sáng)"
 
         if note.startswith(" | "): note = note[3:]
 
@@ -315,6 +315,14 @@ with col2:
 
 st.markdown("---")
 
+def sort_rooms(df):
+    """Hàm hỗ trợ sắp xếp phòng theo đúng thứ tự Toán học"""
+    if df.empty: return df
+    # Chuyển đổi cột Phòng sang dạng số để sort, những phòng lỗi (không phải số) sẽ bị ép thành NaN và đẩy xuống cuối
+    df['Room_Num'] = pd.to_numeric(df['Phòng'], errors='coerce')
+    df = df.sort_values(by=['Room_Num', 'Phòng'])
+    return df.drop(columns=['Room_Num'])
+
 if st.button("🚀 CHẠY KIỂM TRA ĐỐI CHIẾU", use_container_width=True):
     files = {
         'kblt_sang': f_kblt_sang, 'gihf_sang': f_gihf_sang, 'pol_sang': f_pol_sang,
@@ -326,13 +334,10 @@ if st.button("🚀 CHẠY KIỂM TRA ĐỐI CHIẾU", use_container_width=True):
     else:
         df_loi, df_stay, df_due = process_data(check_date, files)
         
-        # Sắp xếp và tùy chỉnh cột hiển thị
-        if not df_loi.empty: 
-            df_loi = df_loi.sort_values(by="Phòng")[['Phân Loại', 'Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Chi Tiết Lỗi', 'Hồ Sơ']]
-        if not df_stay.empty: 
-            df_stay = df_stay.sort_values(by="Phòng")[['Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Hạn Visa', 'Trạng Thái/Ghi Chú', 'Hồ Sơ']]
-        if not df_due.empty: 
-            df_due = df_due.sort_values(by="Phòng")[['Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Hạn Visa', 'Trạng Thái/Ghi Chú', 'Hồ Sơ']]
+        # Sắp xếp Số phòng từ nhỏ đến lớn chuẩn xác
+        df_loi = sort_rooms(df_loi)[['Phân Loại', 'Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Chi Tiết Lỗi', 'Hồ Sơ']] if not df_loi.empty else df_loi
+        df_stay = sort_rooms(df_stay)[['Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Hạn Visa', 'Trạng Thái/Ghi Chú', 'Hồ Sơ']] if not df_stay.empty else df_stay
+        df_due = sort_rooms(df_due)[['Phòng', 'Tên Khách', 'Passport', 'Ngày In', 'Ngày Out', 'Hạn Visa', 'Trạng Thái/Ghi Chú', 'Hồ Sơ']] if not df_due.empty else df_due
 
         tab1, tab2, tab3 = st.tabs(["🚨 Lỗi Dữ Liệu", "🛏️ Stayover", "🚪 Due Out"])
         
