@@ -73,7 +73,7 @@ VN_MAP = {
     'NO': 'NOR', 'OMAN': 'OMN', 'OM': 'OMN', 'ORANGE': 'OR', 'OTHER COUNTRY': 'OC', 'PAKISTAN': 'PAK', 
     'PK': 'PAK', 'PALAU': 'PLW', 'PW': 'PLW', 'PALESTINE': 'PSE', 'PS': 'PSE', 'PALMYRA ATOLL': 'LQ', 
     'PANAMA': 'PAN', 'PA': 'PAN', 'PAP. NEW GUINEA': 'PNG', 'PG': 'PNG', 'PARAGUAY': 'PRY', 'PY': 'PRY', 
-    'PERU': 'PER', 'PE': 'PER', 'PHILIPPIN': 'PHL', 'PH': 'PHL', 'PHÁP': 'FRA', 'FR': 'FRA', 
+    'PERU': 'PER', 'PE': 'PER', 'PÊ-RU': 'PER', 'PÊ RU': 'PER', 'PHILIPPIN': 'PHL', 'PH': 'PHL', 'PHÁP': 'FRA', 'FR': 'FRA', 
     'PITCAIRN ISLNDS': 'PCN', 'PN': 'PCN', 'PUERTO RICO': 'PRI', 'PR': 'PRI', 'QATAR': 'QAT', 'QA': 'QAT', 
     'REP.OF CONGO': 'COG', 'CG': 'COG', 'REUNION': 'REU', 'RE': 'REU', 'RU MA NI': 'ROU', 'RO': 'ROU', 
     'RWANDA': 'RWA', 'RW': 'RWA', 'S. SANDWICH INS': 'SGS', 'GS': 'SGS', 'S.TOME,PRINCIPE': 'STP', 'ST': 'STP', 
