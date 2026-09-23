@@ -289,6 +289,10 @@ def process_data(check_date, files_dict):
                 name = safe_str(r.get('Họ tên'))
                 passp = standardize_text(safe_str(r.get('Số hộ chiếu')))
                 
+                # BỘ LỌC DÒNG TRỐNG: Nếu không có cả Phòng, Tên và Passport thì bỏ qua
+                if not room and not name and not passp:
+                    continue
+                
                 if not passp or passp == 'NAN': passp = f"NOPASS_{room}_{name[:5]}"
                 
                 din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
@@ -599,7 +603,6 @@ def process_data(check_date, files_dict):
 
         if note.startswith(" | "): note = note[3:]
 
-        # DỌN DẸP RÁC: Chỉ xóa lỗi nếu khách ĐÃ THỰC SỰ RỜI KHỎI KHÁCH SẠN (Không còn trong file hiện tại)
         is_absent_now = has_ca_hien_tai and not in_kc and not in_gc and not in_pc
         if is_absent_now and ("Đã Checked-out hoàn toàn" in note or "[Shorten]" in note or "[Day-use]" in note):
             loai_loi = ""
