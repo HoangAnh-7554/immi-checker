@@ -31,7 +31,7 @@ VN_MAP = {
     'CHRISTMAS ISLND': 'CXR', 'CX': 'CXR', 'CLIPPERTON ISLA': 'IP', 'IP': 'IP', 'COCONUT ISLANDS': 'CCK', 'CC': 'CCK', 
     'COLUMBIA': 'COL', 'CO': 'COL', 'COMOROS': 'COM', 'KM': 'COM', 'COOK ISLANDS': 'COK', 'CK': 'COK', 
     'CORSICA': 'VP', 'VP': 'VP', 'COSTA RICA': 'CRI', 'CR': 'CRI', 'COTE D\'IVOIRE': 'CIV', 'CI': 'CIV', 
-    'CUBA': 'CUB', 'CU': 'CUB', 'CYPRUS': 'CYP', 'CY': 'CYP', 'CĂMPUCHIA': 'KHM', 'KH': 'KHM', 'CAMPUCHIA': 'KHM', 'CĂM PU CHIA': 'KHM', 
+    'CUBA': 'CUB', 'CU': 'CUB', 'CYPRUS': 'CYP', 'CY': 'CYP', 'CĂMPUCHIA': 'KHM', 'KH': 'KHM', 'CAMPUCHIA': 'KHM', 'CĂM PU CHIA': 'KHM', 'CĂM-PU-CHIA': 'KHM',
     'DEM. REP. CONGO': 'COD', 'CD': 'COD', 'DJIBOUTI': 'DJI', 'DJ': 'DJI', 'DOMINICA': 'DMA', 'DM': 'DMA', 
     'DOMINICAN REP.': 'DOM', 'DO': 'DOM', 'DUTCH ANTILLES': 'AN', 'AN': 'AN', 'ĐAN MẠCH': 'DNK', 'DK': 'DNK', 
     'ĐÀI LOAN': 'TWN', 'TW': 'TWN', 'ĐỨC': 'DEU', 'DE': 'DEU', 'EAST TIMOR': 'TP', 'TL': 'TLS', 'ECUADOR': 'ECU', 
@@ -117,9 +117,9 @@ VN_MAP_KEYS_SORTED = sorted(VN_MAP.keys(), key=len, reverse=True)
 
 def get_src_name(s_key):
     s_lower = s_key.lower()
-    if 'kblt' in s_lower: return 'KBLT'
-    if 'gihf' in s_lower: return 'GIHF'
-    if 'pol' in s_lower: return 'Police'
+    if 'kblt' in s_lower: return 'Web KBLT'
+    if 'gihf' in s_lower: return 'Opera (GIHF)'
+    if 'pol' in s_lower: return 'Opera (Police)'
     return s_key
 
 def get_srcs_str(s_keys):
@@ -266,7 +266,7 @@ def parse_xml(file, is_police=False):
                 'Số hộ chiếu': standardize_text(passport.text if passport is not None else ""),
                 'Ngày đến ': parse_date(din.text) if din is not None else None,
                 'Thời gian dự kiến tạm trú tại CSLT': parse_date(dout.text) if dout is not None else None,
-                'Thời hạn được phép tạm trú tại Việt Nam': parse_date(visa.text) if visa is not None else None,
+                'Thời hạn được phép tạm trú tại Việt Nam': safe_str(visa.text) if visa is not None else None,
                 'Số phòng': safe_room(room.text if room is not None else "")
             })
         return pd.DataFrame(data)
@@ -292,12 +292,14 @@ def process_data(check_date, files_dict):
                 if not passp or passp == 'NAN': passp = f"NOPASS_{room}_{name[:5]}"
                 
                 din, dout = r.get('Ngày đến '), r.get('Thời gian dự kiến tạm trú tại CSLT')
-                visa = r.get('Thời hạn được phép tạm trú tại Việt Nam', None)
+                visa_raw = r.get('Thời hạn được phép tạm trú tại Việt Nam', None)
+                visa_dt = parse_date(visa_raw)
                 
                 all_guests.append({
                     'Key': passp, 'Room': room, 'Name': name, 'DOB': r.get('Ngày sinh'), 
                     'Gender': r.get('Giới tính'), 'Nat': r.get('Quốc tịch'),
-                    'In': parse_date(din), 'Out': parse_date(dout), 'Visa': parse_date(visa) if 'kblt' in source_label else visa, 'Src': source_label
+                    'In': parse_date(din), 'Out': parse_date(dout), 
+                    'Visa': visa_dt, 'Visa_Raw': visa_raw, 'Src': source_label
                 })
 
     master_dict = {}
@@ -467,7 +469,6 @@ def process_data(check_date, files_dict):
 
         is_due, is_stay, note, loai_loi = False, False, "", ""
         
-        # [BẢN VÁ LỖI CỘT CHI TIẾT TƯỜNG MINH]: Lọc file chính xác, gọi tên cụ thể
         current_srcs = [s for s in srcs if 'chieu' in s]
         past_srcs = [s for s in srcs if 'sang' in s]
         
@@ -475,29 +476,29 @@ def process_data(check_date, files_dict):
             if 'gihf_chieu' in uploaded_files and 'gihf_chieu' not in srcs:
                 if chot_out_date and chot_out_date > check_dt: 
                     loai_loi = "Thiếu GIHF (Hiện tại)"
-                    if current_srcs: err += f"Có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên GIHF; "
-                    else: err += f"Có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên GIHF (Hiện tại); "
+                    if current_srcs: err += f"Đã có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên Opera (GIHF); "
+                    else: err += f"Đã có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên Opera (GIHF Hiện tại); "
             elif 'kblt_chieu' in uploaded_files and 'kblt_chieu' not in srcs:
                 if chot_out_date and chot_out_date > check_dt: 
                     loai_loi = "Thiếu KBLT (Hiện tại)"
-                    if current_srcs: err += f"Có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên KBLT; "
-                    else: err += f"Có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên KBLT (Hiện tại); "
+                    if current_srcs: err += f"Đã có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên Web KBLT; "
+                    else: err += f"Đã có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên Web KBLT (Hiện tại); "
             elif not is_vietnamese and 'pol_chieu' in uploaded_files and 'pol_chieu' not in srcs:
                 if pIn == check_dt: 
                     loai_loi = "Thiếu Police (Hiện tại)"
-                    if current_srcs: err += f"Có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên Police; "
-                    else: err += f"Có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên Police (Hiện tại); "
+                    if current_srcs: err += f"Đã có trên {get_srcs_str(current_srcs)} nhưng KHÔNG CÓ trên Opera (Police); "
+                    else: err += f"Đã có trên {get_srcs_str(past_srcs)} (Ca trước) nhưng KHÔNG CÓ trên Opera (Police Hiện tại); "
         elif has_ca_truoc:
             if 'gihf_sang' in uploaded_files and 'gihf_sang' not in srcs: 
                 loai_loi = "Thiếu GIHF (Ca trước)"
-                err += f"Có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên GIHF; "
+                err += f"Đã có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên Opera (GIHF); "
             elif 'kblt_sang' in uploaded_files and 'kblt_sang' not in srcs: 
                 loai_loi = "Thiếu KBLT (Ca trước)"
-                err += f"Có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên KBLT; "
+                err += f"Đã có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên Web KBLT; "
             elif not is_vietnamese and 'pol_sang' in uploaded_files and 'pol_sang' not in srcs: 
                 if pIn and 0 <= (check_dt - pIn).days <= 1: 
                     loai_loi = "Thiếu Police (Ca trước)"
-                    err += f"Có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên Police; "
+                    err += f"Đã có trên {get_srcs_str(past_srcs)} nhưng KHÔNG CÓ trên Opera (Police); "
 
         if has_ca_hien_tai:
             if pIn == check_dt or in_pc:
@@ -578,23 +579,29 @@ def process_data(check_date, files_dict):
             opera_garbage = []
             for s in srcs:
                 if 'gihf' in s:
-                    v = srcs[s]['Visa']
-                    if pd.isna(v):
-                        opera_missing = True
-                    elif isinstance(v, str) and v.upper() not in ["MIỄN", "EXEMPT", "K/T", "-"]:
-                        opera_missing = True
-                        if v not in opera_garbage: opera_garbage.append(v)
+                    v_dt = srcs[s]['Visa']
+                    v_raw = srcs[s]['Visa_Raw']
+                    if pd.isna(v_dt):
+                        if pd.isna(v_raw) or str(v_raw).strip() == "":
+                            opera_missing = True
+                        else:
+                            v_str = str(v_raw).strip().upper()
+                            if v_str not in ["MIỄN", "EXEMPT", "K/T", "-", "MIEN"]:
+                                opera_missing = True
+                                if str(v_raw).strip() not in opera_garbage: opera_garbage.append(str(v_raw).strip())
             
             if opera_missing:
                 loai_loi = "Lưu ý" if not loai_loi else loai_loi
                 if opera_garbage:
-                    err += f"Chưa nhập Visa trên GIHF (Đang chứa dữ liệu rác: {', '.join(opera_garbage)}); "
+                    err += f"Chưa nhập Visa trên Opera (GIHF) (Đang chứa dữ liệu rác: {', '.join(opera_garbage)}); "
                 else:
-                    err += "Chưa nhập Visa trên GIHF; "
+                    err += "Chưa nhập Visa trên Opera (GIHF); "
 
         if note.startswith(" | "): note = note[3:]
 
-        if "Đã Checked-out hoàn toàn" in note:
+        # DỌN DẸP RÁC: Chỉ xóa lỗi nếu khách ĐÃ THỰC SỰ RỜI KHỎI KHÁCH SẠN (Không còn trong file hiện tại)
+        is_absent_now = has_ca_hien_tai and not in_kc and not in_gc and not in_pc
+        if is_absent_now and ("Đã Checked-out hoàn toàn" in note or "[Shorten]" in note or "[Day-use]" in note):
             loai_loi = ""
             err = ""
             
